@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<title>סידור יומי</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Noto+Serif+Hebrew:wght@400;700&family=Assistant:wght@400;600&display=swap">
+<style>
+/* Layout: mirrors the Tfilon phone app — black title bar, dark gradient ground, full-width silver buttons, ticker band with the day's info. Deliberately single dark theme. */
+:root{
+  color-scheme:dark;
+  --ground-top:#0d0f12; --ground-bot:#262b33; --bar:#000000; --bar-fg:#e8e8e8;
+  --btn-hi:#f1f2f2; --btn-lo:#c4c6c8; --btn-edge:#8f9296; --btn-fg:#000000;
+  --fg:#f2f2f2; --muted:#a7adb5; --note:#7fd18b; --insert:#ffd36b; --rule:#3a414b; --hl:#7fd18b;
+  --f-btn:"Frank Ruhl Libre","Noto Serif Hebrew","David",serif;
+  --f-text:"Noto Serif Hebrew","David","Times New Roman",serif;
+  --f-ui:"Assistant","Arial Hebrew",Arial,sans-serif;
+  --size:1.3rem;
+}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;direction:rtl;background:var(--ground-top)}
+body{margin:0;min-height:100vh;color:var(--fg);font-family:var(--f-ui);text-align:right;
+  background:linear-gradient(180deg,var(--ground-top) 0%,var(--ground-bot) 100%) fixed;background-color:var(--ground-top)}
+button,select,input{font-family:inherit}
+:focus-visible{outline:3px solid var(--note);outline-offset:2px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bar);display:flex;align-items:center;gap:8px;padding:14px 16px 12px;min-height:56px}
+.bar h1{flex:1;min-width:0;margin:0;font:500 1.65rem/1.15 var(--f-btn);color:var(--bar-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.back{background:none;border:0;color:var(--bar-fg);font:400 2rem/1 var(--f-ui);width:44px;height:44px;cursor:pointer;padding:0}
+.ticker{background:#111418;border-bottom:1px solid #000;color:#e9e3c8;font:600 1rem/1 var(--f-ui);overflow:hidden;white-space:nowrap;height:32px;display:flex;align-items:center}
+.ticker span{display:inline-block;padding-inline-start:100%;animation:tick 40s linear infinite}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(100%)}}
+@media (prefers-reduced-motion:reduce){.ticker{white-space:normal;height:auto;padding:6px 16px;line-height:1.5}.ticker span{animation:none;padding:0}}
+.view{padding:8px 8px 40px;display:flex;flex-direction:column;gap:12px;max-width:44rem;margin:0 auto}
+.mbtn{display:block;width:100%;min-height:80px;padding:10px 14px;border-radius:3px;border:1px solid var(--btn-edge);cursor:pointer;
+  background:linear-gradient(180deg,var(--btn-hi) 0%,#dfe0e1 48%,var(--btn-lo) 100%);color:var(--btn-fg);
+  font:700 clamp(2rem,9vw,2.8rem)/1.2 var(--f-btn);text-align:center;box-shadow:inset 0 1px 0 #fff,0 2px 4px rgba(0,0,0,.6)}
+.mbtn:active{background:linear-gradient(180deg,var(--btn-lo) 0%,#dfe0e1 52%,var(--btn-hi) 100%)}
+.mbtn.small{min-height:56px;font-size:clamp(1.3rem,5vw,1.8rem)}
+.panel{background:rgba(0,0,0,.35);border:1px solid var(--rule);border-radius:4px;padding:14px 16px}
+.panel h2{font:700 1.4rem var(--f-btn);margin:0 0 8px;color:var(--fg)}
+table.z{width:100%;border-collapse:collapse;font-size:1.1rem;font-variant-numeric:tabular-nums}
+table.z td{padding:7px 2px;border-bottom:1px solid var(--rule)}
+table.z td.t{text-align:left;direction:ltr;font-weight:700;width:4.5em}
+table.z tr.hl td{color:var(--hl)}
+.note{color:var(--muted);font-size:.9rem;line-height:1.55;margin:10px 0 0}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;font-weight:600;font-size:1.05rem}
+.field select,.field input[type=date]{font-size:1.05rem;padding:10px;border-radius:4px;border:1px solid var(--btn-edge);background:#14181d;color:var(--fg)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button,.tbtn{font:600 1.05rem var(--f-ui);padding:8px 14px;border-radius:4px;border:1px solid var(--btn-edge);background:linear-gradient(180deg,var(--btn-hi),var(--btn-lo));color:#000;cursor:pointer;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--note);border-color:var(--note)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tools{position:sticky;top:calc(env(safe-area-inset-top,0px) + 56px);z-index:6;background:#0b0d10;border-bottom:1px solid var(--rule);display:flex;gap:6px;align-items:center;padding:8px;flex-wrap:wrap}
+.tools select{flex:1 1 160px;min-width:0;font:600 1rem var(--f-ui);padding:8px;border-radius:4px;border:1px solid var(--btn-edge);background:#14181d;color:var(--fg)}
+.ctx{flex-basis:100%;font-size:.88rem;color:var(--muted)}
+#text{padding:4px 16px 60px;max-width:44rem;margin:0 auto}
+#text h2{font:700 1.5rem/1.3 var(--f-btn);color:var(--note);margin:26px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--rule);scroll-margin-top:140px}
+#text p{margin:0 0 .85em}
+#text p.t{font-family:var(--f-text);font-size:var(--size);line-height:1.95;color:var(--fg)}
+#text p.n{font-size:calc(var(--size)*.74);line-height:1.6;color:var(--note)}
+#text p.ins{color:var(--insert)}
+.loading{padding:60px 0;text-align:center;color:var(--muted);font-size:1.2rem}
+.about p{line-height:1.7;margin:0 0 10px}
+</style>
+
+<div class="bar">
+  <h1 id="title">תפילון</h1>
+  <button class="back" id="back" type="button" aria-label="חזרה" hidden>‹</button>
+</div>
+<div class="ticker" id="ticker" aria-live="off"><span id="tickerText"></span></div>
+
+<div class="view" id="vMain"><div class="loading">טוען…</div></div>
+<div class="view" id="vNus" hidden></div>
+<div class="view" id="vList" hidden></div>
+<div class="view" id="vZ" hidden></div>
+<div class="view" id="vSet" hidden>
+  <div class="panel">
+    <div class="field">נוסח ברירת מחדל
+      <div class="seg" id="nusSeg"><button type="button" data-n="a">אשכנז</button><button type="button" data-n="s">ספרד</button><button type="button" data-n="em">עדות המזרח</button></div>
+    </div>
+    <label class="field" for="citySel">מיקום<select id="citySel"></select></label>
+    <p class="note" style="margin:-6px 0 14px">המיקום חשוב בשביל זמני היום וכן בשביל לקבוע אם אתה בחו״ל או בארץ.</p>
+    <div class="field">גודל כתב
+      <div class="row"><button class="tbtn" id="fsDown" type="button" aria-label="הקטנת כתב">א−</button><button class="tbtn" id="fsUp" type="button" aria-label="הגדלת כתב">א+</button><span id="fsVal" style="color:var(--muted)"></span></div>
+    </div>
+    <div class="field">קביעת תאריך חלופי
+      <div class="row"><input type="date" id="dateSel" aria-label="תאריך">
+        <label style="display:flex;gap:6px;align-items:center;font-weight:400"><input type="checkbox" id="nightSel"> אחרי השקיעה</label>
+        <button class="tbtn" id="todayBtn" type="button">היום</button></div>
+    </div>
+    <button class="mbtn small" id="saveSet" type="button">שמור</button>
+  </div>
+</div>
+<div class="view" id="vAbout" hidden>
+  <div class="panel about">
+    <h2>אודות</h2>
+    <p>התפילות, ההנחיות והלוגיקה שקובעת מה אומרים בכל יום לקוחים מהאפליקציה „תפילון+” (גרסה 0.2.21) של אורי הולנדר, המופצת בחינם.</p>
+    <p>האתר מתעדכן לבד לפי התאריך, השעה והמיקום שנבחר. אחרי השקיעה הוא עובר ליום הבא, כמו האפליקציה. הנתונים מכסים את השנים 2026–2036.</p>
+    <p>זמני היום מחושבים כמו באפליקציה ומותאמים אוטומטית לשעון קיץ וחורף. אין להשתמש בהם הלכה למעשה, ויש לקחת בחשבון סטייה של כמה דקות.</p>
+  </div>
+</div>
+<div id="vRead" hidden>
+  <div class="tools">
+    <label for="jump" style="position:absolute;width:1px;height:1px;overflow:hidden">מעבר לפרק</label>
+    <select id="jump"></select>
+    <button class="tbtn" id="rDown" type="button" aria-label="הקטנת כתב">א−</button>
+    <button class="tbtn" id="rUp" type="button" aria-label="הגדלת כתב">א+</button>
+    <button class="tbtn" id="pdfBtn" type="button">PDF ⬇</button>
+    <div class="ctx" id="rctx"></div>
+  </div>
+  <div id="text"></div>
+</div>
+<div id="pdfModal" hidden style="position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;justify-content:center">
+  <div class="panel" style="background:#14181d;width:100%;max-width:34rem;margin:0;border-radius:10px 10px 0 0;padding:16px;max-height:90vh;overflow:auto">
+    <h2 id="pdfTitle">הורדה ל־PDF</h2>
+    <div id="pdfOpts" style="display:flex;flex-direction:column;gap:8px">
+      <button type="button" class="mbtn small" data-k="motz" id="motzOpt">ערבית לכל מוצאי שבת – כל האפשרויות (דף אחד דו־צדדי)</button>
+      <button type="button" class="mbtn small" data-k="sheet" id="sheetOpt"><span id="sheetLbl">דף אחד דו־צדדי (2 עמודים)</span></button>
+      <button type="button" class="mbtn small" data-k="a4">A4 · טור אחד</button>
+      <button type="button" class="mbtn small" data-k="a4c2">A4 · שני טורים (פחות עמודים)</button>
+      <button type="button" class="mbtn small" data-k="bookA5">ספרון A5 לבית דפוס</button>
+      <button type="button" class="mbtn small" data-k="bookA4">ספרון A4 לבית דפוס</button>
+      <button type="button" class="mbtn small" data-k="impA4">ספרון להדפסה עצמית על דף A4</button>
+      <button type="button" class="mbtn small" data-k="impA5">ספרון להדפסה עצמית על דף A5</button>
+    </div>
+    <p class="note" id="pdfNote">הקובץ נבנה בטלפון עבור התפילה והיום שמוצגים עכשיו. ספרון לבית דפוס: עמוד אחרי עמוד עם כריכה ותוכן עניינים. ספרון להדפסה עצמית: מדפיסים דו־צדדי עם היפוך בצד הקצר ומקפלים באמצע.</p>
+    <p id="pdfStatus" style="font-weight:600;min-height:1.4em;margin:8px 0"></p>
+    <button type="button" class="tbtn" id="pdfClose" style="width:100%">סגירה</button>
+  </div>
+</div>
+
+<script>
+var CITIES=[["אבני איתן, ישראל",true,2.0,"Asia/Jerusalem"],["אבני חפץ, ישראל",true,2.0,"Asia/Jerusalem"],["אילת, ישראל",true,2.0,"Asia/Jerusalem"],["אלון מורה, ישראל",true,2.0,"Asia/Jerusalem"],["אלון שבות, ישראל",true,2.0,"Asia/Jerusalem"],["אלוני הבשן, ישראל",true,2.0,"Asia/Jerusalem"],["אלעד, ישראל",true,2.0,"Asia/Jerusalem"],["אפרת, ישראל",true,2.0,"Asia/Jerusalem"],["אריאל, ישראל",true,2.0,"Asia/Jerusalem"],["אשדוד, ישראל",true,2.0,"Asia/Jerusalem"],["אשקלון, ישראל",true,2.0,"Asia/Jerusalem"],["באר שבע, ישראל",true,2.0,"Asia/Jerusalem"],["בית אל, ישראל",true,2.0,"Asia/Jerusalem"],["בית שאן, ישראל",true,2.0,"Asia/Jerusalem"],["בית שמש, ישראל",true,2.0,"Asia/Jerusalem"],["ביתר עילית, ישראל",true,2.0,"Asia/Jerusalem"],["בני ברק, ישראל",true,2.0,"Asia/Jerusalem"],["גבעת שמואל, ישראל",true,2.0,"Asia/Jerusalem"],["גבעתיים, ישראל",true,2.0,"Asia/Jerusalem"],["גדרה, ישראל",true,2.0,"Asia/Jerusalem"],["גמזו, ישראל",true,2.0,"Asia/Jerusalem"],["הר ברכה, ישראל",true,2.0,"Asia/Jerusalem"],["הרצליה, ישראל",true,2.0,"Asia/Jerusalem"],["חברון, ישראל",true,2.0,"Asia/Jerusalem"],["חדרה, ישראל",true,2.0,"Asia/Jerusalem"],["חיספין, ישראל",true,2.0,"Asia/Jerusalem"],["חיפה, ישראל",true,2.0,"Asia/Jerusalem"],["חצור הגלילית, ישראל",true,2.0,"Asia/Jerusalem"],["חשמונאים, ישראל",true,2.0,"Asia/Jerusalem"],["טבריה, ישראל",true,2.0,"Asia/Jerusalem"],["טלמון, ישראל",true,2.0,"Asia/Jerusalem"],["יבנה, ישראל",true,2.0,"Asia/Jerusalem"],["יד בנימין, ישראל",true,2.0,"Asia/Jerusalem"],["ירוחם, ישראל",true,2.0,"Asia/Jerusalem"],["ירושלים, ישראל",true,2.0,"Asia/Jerusalem"],["יתד, ישראל",true,2.0,"Asia/Jerusalem"],["כפר חב\"ד, ישראל",true,2.0,"Asia/Jerusalem"],["כרמי צור, ישראל",true,2.0,"Asia/Jerusalem"],["כרמיאל, ישראל",true,2.0,"Asia/Jerusalem"],["לוד, ישראל",true,2.0,"Asia/Jerusalem"],["מודיעין, ישראל",true,2.0,"Asia/Jerusalem"],["מורשת, ישראל",true,2.0,"Asia/Jerusalem"],["מעלה אדומים, ישראל",true,2.0,"Asia/Jerusalem"],["מצפה יריחו, ישראל",true,2.0,"Asia/Jerusalem"],["נהריה, ישראל",true,2.0,"Asia/Jerusalem"],["נווה דניאל, ישראל",true,2.0,"Asia/Jerusalem"],["נוף איילון, ישראל",true,2.0,"Asia/Jerusalem"],["נחושה, ישראל",true,2.0,"Asia/Jerusalem"],["ניצן, ישראל",true,2.0,"Asia/Jerusalem"],["נס הרים, ישראל",true,2.0,"Asia/Jerusalem"],["נתיבות, ישראל",true,2.0,"Asia/Jerusalem"],["נתניה, ישראל",true,2.0,"Asia/Jerusalem"],["סוסיא, ישראל",true,2.0,"Asia/Jerusalem"],["סנסנה, ישראל",true,2.0,"Asia/Jerusalem"],["סעד, ישראל",true,2.0,"Asia/Jerusalem"],["עטרת, ישראל",true,2.0,"Asia/Jerusalem"],["עכו, ישראל",true,2.0,"Asia/Jerusalem"],["עלי, ישראל",true,2.0,"Asia/Jerusalem"],["ערד, ישראל",true,2.0,"Asia/Jerusalem"],["עפולה, ישראל",true,2.0,"Asia/Jerusalem"],["פדואל, ישראל",true,2.0,"Asia/Jerusalem"],["פסגות, ישראל",true,2.0,"Asia/Jerusalem"],["פתח תקוה, ישראל",true,2.0,"Asia/Jerusalem"],["צפת, ישראל",true,2.0,"Asia/Jerusalem"],["קצרין, ישראל",true,2.0,"Asia/Jerusalem"],["קריית אונו, ישראל",true,2.0,"Asia/Jerusalem"],["קריית גת, ישראל",true,2.0,"Asia/Jerusalem"],["קריית שמונה, ישראל",true,2.0,"Asia/Jerusalem"],["קרני שומרון, ישראל",true,2.0,"Asia/Jerusalem"],["קשת, ישראל",true,2.0,"Asia/Jerusalem"],["ראש העין, ישראל",true,2.0,"Asia/Jerusalem"],["ראשון לציון, ישראל",true,2.0,"Asia/Jerusalem"],["רחובות, ישראל",true,2.0,"Asia/Jerusalem"],["רמלה, ישראל",true,2.0,"Asia/Jerusalem"],["רמת בית שמש, ישראל",true,2.0,"Asia/Jerusalem"],["רמת גן, ישראל",true,2.0,"Asia/Jerusalem"],["רעננה, ישראל",true,2.0,"Asia/Jerusalem"],["שבות רחל, ישראל",true,2.0,"Asia/Jerusalem"],["שבי שומרון, ישראל",true,2.0,"Asia/Jerusalem"],["שדה אליהו, ישראל",true,2.0,"Asia/Jerusalem"],["שדרות, ישראל",true,2.0,"Asia/Jerusalem"],["שילה, ישראל",true,2.0,"Asia/Jerusalem"],["תל אביב, ישראל",true,2.0,"Asia/Jerusalem"],["סידני, אוסטרליה",false,10.0,"Australia/Sydney"],["מונטווידאו, אורוגוואי",false,-3.0,"America/Montevideo"],["לונדון, אנגליה",false,0.0,"Europe/London"],["מנצ'סטר, אנגליה",false,0.0,"Europe/London"],["בואנוס איירס, ארגנטינה",false,-3.0,"America/Argentina/Buenos_Aires"],["אוסטין, ארה\"ב",false,-6.0,"America/Chicago"],["בולטימור, ארה\"ב",false,-5.0,"America/New_York"],["דנוור, ארה\"ב",false,-7.0,"America/Denver"],["דטרויט, ארה\"ב",false,-5.0,"America/Detroit"],["וושינגטון די. סי., ארה\"ב",false,-5.0,"America/New_York"],["לוס אנג'לס, ארה\"ב",false,-8.0,"America/Los_Angeles"],["מיאמי, ארה\"ב",false,-5.0,"America/New_York"],["מיניאפוליס, ארה\"ב",false,-6.0,"America/Chicago"],["ממפיס, ארה\"ב",false,-6.0,"America/Chicago"],["ניו יורק, ארה\"ב",false,-5.0,"America/New_York"],["סן פרנסיסקו, ארה\"ב",false,-8.0,"America/Los_Angeles"],["שיקגו, ארה\"ב",false,-6.0,"America/Chicago"],["מילאנו, איטליה",false,1.0,"Europe/Rome"],["רומא, איטליה",false,1.0,"Europe/Rome"],["אנטוורפן, בלגיה",false,1.0,"Europe/Brussels"],["סאו פאולו, ברזיל",false,-3.0,"America/Sao_Paulo"],["אמסטרדם, הולנד",false,1.0,"Europe/Amsterdam"],["בלומפונטיין, דרום אפריקה",false,2.0,"Africa/Johannesburg"],["דרבן, דרום אפריקה",false,2.0,"Africa/Johannesburg"],["יוהנסבורג, דרום אפריקה",false,1.0,"Africa/Johannesburg"],["קייפטאון, דרום אפריקה",false,2.0,"Africa/Johannesburg"],["זאבליאק, מונטנגרו",false,1.0,"Europe/Podgorica"],["גלאזגו, סקוטלנד",false,0.0,"Europe/London"],["ורשה, פולין",false,1.0,"Europe/Warsaw"],["קראקוב, פולין",false,1.0,"Europe/Warsaw"],["פנמה סיטי, פנמה",false,-5.0,"America/Panama"],["מרסיי, צרפת",false,1.0,"Europe/Paris"],["פריז, צרפת",false,1.0,"Europe/Paris"],["טורונטו, קנדה",false,-5.0,"America/Toronto"],["מונטריאול, קנדה",false,-5.0,"America/Toronto"],["דוברובניק, קרואטיה",false,1.0,"Europe/Zagreb"],["ציריך, שווייץ",false,1.0,"Europe/Zurich"]];
+var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק\"ש (מג\"א)", "סזק\"ש (גר\"א)", "סזת\"פ (מג\"א)", "סזת\"פ (גר\"א)", "חצות היום", "מנחה גדולה", "מנחה קטנה", "פלג המנחה", "שקיעה", "צאה\"כ"], "extra": ["הדלקת נרות", "מוצ\"ש", "מוצ\"ש (רבינו תם)", "מוציו\"ט", "מוציו\"ט (רבינו תם)", "מוצשויו\"ט", "מוצשויו\"ט (רבינו תם)"]};
+// Faithful port of Tfilon's line resolver. Day data supplies condition bits and marker values.
+(function(root){
+  var PASS=["(:",":)","-----","([","])","(===","===)","(---","---)","[][]",":=:="];
+  function split(s){ return s.split("\n"); }
+  function resolve(name, T, day, ctx){
+    // day: {bits: Set of uppercase cond tokens true, mk: {markerKey: value}}
+    var v=split(T[name]!=null?T[name]:"([\nשגיאה: בעיה בקריאה מקובץ.\n])\n");
+    var guard=0;
+    for(var i=0;i<v.length;i++){
+      if(++guard>200000) break;
+      var line=v[i].trim(), keep=false;
+      if(line.indexOf("()")!==0){ for(var p=0;p<PASS.length;p++) if(line.indexOf(PASS[p])===0){keep=true;break;} }
+      if(keep) continue;
+      var r=null;
+      if(line.indexOf("()")===0){
+        var sp=line.indexOf(" "), fn, cond=null;
+        if(sp<0){ fn=line.substring(2); } else { fn=line.substring(2,sp); cond=line.substring(sp+1).trim(); }
+        if(cond===null || cond==="" || day.bits.has(cond.toUpperCase())) r = T[fn]!=null?T[fn]:"([\nשגיאה: בעיה בקריאה מקובץ.\n])\n";
+        else r="";
+      } else if(Object.prototype.hasOwnProperty.call(MARKERS,line)){
+        var key=MARKERS[line](ctx); var val=day.mk[key];
+        r = (val===undefined)? "" : (val===null? null : val);
+      }
+      if(r===null) continue;
+      if(r!=="\r"){ var s=split(r); v.splice.apply(v,[i,1].concat(s)); i--; }
+      else { v[i]=""; }
+    }
+    return v;
+  }
+  var MARKERS={
+    "=====":function(){return "=====";},
+    "=-=-":function(){return "=-=-";},
+    "==(==(":function(){return "==(==(";},
+    "::::::":function(){return "::::::";},
+    "::::":function(){return "::::";},
+    ":::::":function(){return ":::::";},
+    ":::":function(c){return ":::"+(c&&c.nusach==="a"?"a":"s");},
+    ":-:-":function(){return ":-:-";}
+  };
+  root.TfilonResolver={resolve:resolve};
+  if(typeof module!=="undefined") module.exports=root.TfilonResolver;
+})(typeof window!=="undefined"?window:globalThis);
+
+// Builds print PDFs in the browser: paginates the prayer into fixed pages, rasterizes each page
+// through SVG foreignObject (native Hebrew shaping), and writes a small JPEG-based PDF.
+(function(root){
+  var FONT_FILES=[['PNS','400','nsh-he-400','U+0590-05FF,U+FB1D-FB4F,U+200C-2010,U+25CC'],['PNS','700','nsh-he-700','U+0590-05FF,U+FB1D-FB4F,U+200C-2010,U+25CC'],
+    ['PNS','400','nsh-la-400','U+0000-00FF,U+2000-206F,U+20AC'],['PNS','700','nsh-la-700','U+0000-00FF,U+2000-206F,U+20AC'],
+    ['PAS','400','as-he-400','U+0590-05FF,U+FB1D-FB4F,U+200C-2010'],['PAS','700','as-he-700','U+0590-05FF,U+FB1D-FB4F,U+200C-2010'],
+    ['PAS','400','as-la-400','U+0000-00FF,U+2000-206F'],['PAS','700','as-la-700','U+0000-00FF,U+2000-206F']];
+  var fontCSS=null, ZOOM=1;
+  function calibrate(){
+    try{var d=document.createElement('div');d.style.cssText='position:absolute;left:-9999px;top:0;font:100px/1 PNS,serif;white-space:nowrap;-webkit-text-size-adjust:none;text-size-adjust:none';d.textContent='אבגדה';document.body.appendChild(d);
+      var hgt=d.getBoundingClientRect().height,wid=d.getBoundingClientRect().width;
+      var cv=document.createElement('canvas').getContext('2d');cv.font='100px PNS, serif';var cw=cv.measureText('אבגדה').width;
+      document.body.removeChild(d);
+      var z=hgt/100; if(cw>0){var zw=wid/cw; if(Math.abs(zw-1)>Math.abs(z-1)) z=zw;}
+      ZOOM=(z>1.03||z<0.97)?z:1;
+    }catch(e){ZOOM=1;}
+    return ZOOM;
+  }
+  function b64(buf){var s='',u=new Uint8Array(buf),CH=0x8000;for(var i=0;i<u.length;i+=CH)s+=String.fromCharCode.apply(null,u.subarray(i,i+CH));return btoa(s);}
+  function loadFonts(){
+    if(fontCSS) return Promise.resolve(fontCSS);
+    return Promise.all(FONT_FILES.map(function(f){return fetch('fonts/'+f[2]+'.woff2').then(function(r){return r.arrayBuffer();}).then(function(buf){
+      var data='data:font/woff2;base64,'+b64(buf);
+      var p=Promise.resolve();
+      try{var ff=new FontFace(f[0],buf.slice(0),{weight:f[1],unicodeRange:f[3]});document.fonts.add(ff);p=ff.load().catch(function(){});}catch(e){}
+      return p.then(function(){return '@font-face{font-family:'+f[0]+';font-weight:'+f[1]+';unicode-range:'+f[3]+';src:url('+data+') format("woff2")}';});});}))
+    .then(function(rules){fontCSS=rules.join('');var st=document.createElement('style');st.textContent=PAGE_CSS;document.head.appendChild(st);return document.fonts.ready.then(function(){calibrate();return fontCSS;});});
+  }
+  var PAGE_CSS=
+    '.pg{-webkit-text-size-adjust:none;text-size-adjust:none;position:relative;background:#fff;color:#111;direction:rtl;text-align:right;overflow:hidden;font-family:PNS,"Noto Serif Hebrew",serif;box-sizing:border-box}'+
+    '.col{position:absolute;overflow:hidden}'+
+    '.col h2{font:700 var(--h) PNS,serif;color:#2f5a3a;margin:0 0 .35em;padding:.5em 0 .15em;border-bottom:1px solid #b9c4b7;line-height:1.3}'+
+    '.col p{margin:0 0 .5em}'+
+    '.col p.t{font-size:var(--fs);line-height:1.62;text-align:justify}'+
+    '.col p.n{font-family:PAS,Arial,sans-serif;font-size:calc(var(--fs)*.76);line-height:1.4;color:#3d463f;background:#edf2eb;border-radius:3px;padding:2px 6px}'+
+    '.col p.ins{background:#f8f0d6;border-right:3px solid #c9a64a;padding:1px 7px}'+
+    '.col .hdr{text-align:center;padding-bottom:.4em;margin-bottom:.4em;border-bottom:2px solid #2f5a3a}'+
+    '.col .hdr b{display:block;font:700 calc(var(--h)*1.5) PNS,serif;color:#2f5a3a}'+
+    '.col .hdr span{font:400 calc(var(--fs)*.8) PAS,Arial,sans-serif;color:#444}'+
+    '.num{position:absolute;left:0;right:0;text-align:center;font:400 11px PAS,Arial,sans-serif;color:#555}'+
+    '.rule{position:absolute;border-left:1px solid #ccc}'+
+    '.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center}'+
+    '.cover .fr{border:2px solid #2f5a3a;outline:1px solid #2f5a3a;outline-offset:4px;padding:0 7%;width:74%;height:76%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center}'+
+    '.cover b{display:block;font:700 34px/1.25 PNS,serif;color:#2f5a3a;margin-bottom:22px}'+
+    '.cover i{display:block;font:400 17px PNS,serif;font-style:normal;margin:4px 0}'+
+    '.cover small{display:block;font:400 13px PAS,Arial,sans-serif;color:#444;margin-top:22px}'+
+    '.tight .col p.t{line-height:1.38;text-align:justify}.tight .col p{margin:0 0 .28em}.tight .col h2{padding:.25em 0 .05em;margin:0 0 .2em}.tight .col p.n{line-height:1.25;padding:1px 4px}.tight .col .hdr{padding-bottom:.2em;margin-bottom:.25em}'+
+    '.toc h2{border:0}.toc li{display:flex;gap:6px;font:400 var(--fs)/1.7 PAS,Arial,sans-serif;list-style:none}.toc ol{margin:0;padding:0}'+
+    '.toc .d{flex:1;border-bottom:1px dotted #999;margin-bottom:.45em}.toc .p{min-width:2em;text-align:left}';
+
+  // layouts in CSS px (96/in). A4=794x1123, A5=559x794.
+  var LAYOUTS={
+    a4:{w:794,h:1123,m:[60,57,70,57],cols:1,gap:0,fs:'16.5px',h2:'21px'},
+    a4c2:{w:794,h:1123,m:[42,38,52,38],cols:2,gap:26,fs:'14px',h2:'17px'},
+    a5:{w:559,h:794,m:[48,45,58,45],cols:1,gap:0,fs:'14px',h2:'17.5px'}
+  };
+
+  function blocksFromSecs(secs){
+    var B=[];
+    secs.forEach(function(sec){
+      if(sec.t){var e=sec.t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');B.push({k:'h2',html:e,toc:e});}
+      sec.items.forEach(function(it){B.push({k:it[0]==='text'?'t':it[0]==='note'?'n':'ins',lines:it[1]});});
+    });
+    return B;
+  }
+  function tokens(lines){var T=[];lines.forEach(function(l,i){if(i)T.push('<br>');l.split(' ').forEach(function(w){if(w)T.push(w);});});return T;}
+  function joinT(T){var s='';for(var i=0;i<T.length;i++){if(T[i]==='<br>'){s+='<br>';continue;}s+=(s&&!/<br>$/.test(s)?' ':'')+T[i];}return s;}
+  function pClass(k){return k==='t'?'t':k==='n'?'n':'t ins';}
+
+  // paginate blocks into column boxes; returns array of boxes (each array of html strings) + toc marks
+  function domPaginate(blocks,L,headerHtml){
+    var meas=document.createElement('div');meas.className='pg'+(L.tight?' tight':'');
+    var cw=(L.w-L.m[1]-L.m[3]-(L.cols-1)*L.gap)/L.cols, ch=L.h-L.m[0]-L.m[2];
+    meas.style.cssText='position:fixed;left:-99999px;top:0;width:'+L.w+'px;--fs:'+(parseFloat(L.fs)/ZOOM)+'px;--h:'+(parseFloat(L.h2)/ZOOM)+'px';
+    var col=document.createElement('div');col.className='col';col.style.cssText='position:static;width:'+cw+'px;overflow:visible';
+    meas.appendChild(col);document.body.appendChild(meas);
+    var boxes=[],cur=[],marks=[];
+    var lim=ch*(L.safety||1);function fits(){return col.scrollHeight<=lim+0.5;}
+    function newBox(){boxes.push(cur);cur=[];col.innerHTML='';}
+    function add(html){var el=document.createElement('div');el.innerHTML=html;var n=el.firstChild;col.appendChild(n);if(fits()){cur.push(html);return true;}col.removeChild(n);return false;}
+    if(headerHtml) add(headerHtml);
+    for(var i=0;i<blocks.length;i++){
+      var b=blocks[i];
+      if(b.k==='hdr'){ if(!add(b.html)){newBox();add(b.html);} continue; }
+      if(b.k==='h2'){
+        var h='<h2>'+b.html+'</h2>';
+        if(!add(h)){newBox();add(h);}
+        // keep with next: need room for at least ~2 lines
+        var probe=document.createElement('p');probe.className='t';probe.innerHTML='א<br>א';col.appendChild(probe);var ok=fits();col.removeChild(probe);
+        if(!ok&&cur.length>1){cur.pop();col.removeChild(col.lastChild);newBox();add(h);}
+        marks.push({t:b.toc,box:boxes.length});
+        continue;
+      }
+      var T=tokens(b.lines),cls=pClass(b.k);
+      while(T.length){
+        var whole='<p class="'+cls+'">'+joinT(T)+'</p>';
+        if(add(whole)){T=[];break;}
+        // binary search largest prefix that fits
+        var lo=0,hi=T.length-1,best=0,el=document.createElement('p');el.className=cls;col.appendChild(el);
+        while(lo<=hi){var mid=(lo+hi)>>1;el.innerHTML=joinT(T.slice(0,mid+1));if(fits()){best=mid+1;lo=mid+1;}else hi=mid-1;}
+        col.removeChild(el);
+        if(best===0){ if(cur.length===0){best=1;} else {newBox();continue;} }
+        cur.push('<p class="'+cls+'">'+joinT(T.slice(0,best))+'</p>');
+        T=T.slice(best);while(T.length&&T[0]==='<br>')T.shift();
+        newBox();
+      }
+    }
+    if(cur.length) boxes.push(cur);
+    document.body.removeChild(meas);
+    return {boxes:boxes,marks:marks,cw:cw,ch:ch};
+  }
+
+
+  // ---- canvas-based layout: measures with real glyph widths, immune to browser text zoom ----
+  var CX=null, DEC=null, wcache={};
+  function ctx(){if(!CX)CX=document.createElement('canvas').getContext('2d');return CX;}
+  function dec(h){if(h.indexOf('&')<0)return h;if(!DEC)DEC=document.createElement('textarea');DEC.innerHTML=h;return DEC.value;}
+  function tw(text,font){var k=font+'|'+text;var v=wcache[k];if(v===undefined){var c=ctx();c.font=font;v=c.measureText(text).width;wcache[k]=v;}return v;}
+  function wrap(T,width,font){ // T tokens (html-escaped words and '<br>'), returns [[words...],...]
+    var lines=[],cur=[],w=0,sp=tw(' ',font);
+    for(var i=0;i<T.length;i++){var t=T[i];
+      if(t==='<br>'){lines.push({w:cur,b:true});cur=[];w=0;continue;}
+      var ww=tw(dec(t),font);
+      if(cur.length&&w+sp+ww>width){lines.push({w:cur,b:false});cur=[t];w=ww;}
+      else{w+=(cur.length?sp:0)+ww;cur.push(t);}
+    }
+    if(cur.length)lines.push({w:cur,b:true});
+    return lines.filter(function(l){return l.w.length;});
+  }
+  function paginate(blocks,L,headerHtml){
+    var fs=parseFloat(L.fs),h=parseFloat(L.h2),tight=!!L.tight;
+    var cw=(L.w-L.m[1]-L.m[3]-(L.cols-1)*L.gap)/L.cols, ch=(L.h-L.m[0]-L.m[2]);
+    var lhT=fs*(tight?1.38:1.62), pm=fs*(tight?0.28:0.5);
+    var fsN=fs*0.76, lhN=fsN*(tight?1.25:1.4), padN=tight?4:6, padNv=tight?1:2;
+    var lhH=h*1.3, padHt=h*(tight?0.25:0.5), padHb=h*(tight?0.05:0.15), mbH=h*(tight?0.2:0.35);
+    var SL=0.985;
+    var fT=fs+'px PNS, serif', fN=fsN+'px PAS, sans-serif', fH='bold '+h+'px PNS, serif';
+    var boxes=[],cur=[],y=0,marks=[];
+    function nb(){boxes.push(cur);cur=[];y=0;}
+    function lineDiv(words,lh,last){return '<div style="height:'+lh.toFixed(2)+'px;line-height:'+lh.toFixed(2)+'px;white-space:nowrap;overflow:visible;text-align:'+(last?'right':'justify')+';text-align-last:'+(last?'right':'justify')+'">'+words.join(' ')+'</div>';}
+    function hdr(html){
+      var m=/<b>([\s\S]*?)<\/b><span>([\s\S]*?)<\/span>/.exec(html)||['', '', ''];
+      var tf=h*1.5, sf=fs*0.8, H=tf*1.3+sf*1.5+6+2+4;
+      if(y>0&&y+H>ch)nb();
+      cur.push('<div style="text-align:center;height:'+(H-4).toFixed(2)+'px;border-bottom:2px solid #2f5a3a;margin-bottom:4px;box-sizing:border-box"><div style="font:700 '+tf.toFixed(2)+'px/'+(tf*1.3).toFixed(2)+'px PNS,serif;color:#2f5a3a;white-space:nowrap">'+m[1]+'</div><div style="font:400 '+sf.toFixed(2)+'px/'+(sf*1.5).toFixed(2)+'px PAS,Arial,sans-serif;color:#444;white-space:nowrap;overflow:hidden">'+m[2]+'</div></div>');
+      y+=H;
+    }
+    if(headerHtml)hdr(headerHtml);
+    for(var i=0;i<blocks.length;i++){var b=blocks[i];
+      if(b.k==='hdr'){hdr(b.html);continue;}
+      if(b.k==='h2'){
+        var hl=wrap(tokens([b.html]),cw*SL,fH),H=hl.length*lhH+padHt+padHb+1+mbH;
+        if(y>0&&y+H+2*lhT>ch)nb();
+        cur.push('<div style="font:700 '+h.toFixed(2)+'px PNS,serif;color:#2f5a3a;padding:'+padHt.toFixed(2)+'px 0 '+padHb.toFixed(2)+'px;border-bottom:1px solid #b9c4b7;margin-bottom:'+mbH.toFixed(2)+'px">'+hl.map(function(l){return '<div style="height:'+lhH.toFixed(2)+'px;line-height:'+lhH.toFixed(2)+'px;white-space:nowrap">'+l.w.join(' ')+'</div>';}).join('')+'</div>');
+        y+=H;marks.push({t:b.toc,box:boxes.length});continue;
+      }
+      var isN=b.k==='n',isI=b.k==='ins';
+      var font=isN?fN:fT, lh=isN?lhN:lhT;
+      var padX=isN?padN*2:(isI?17:0), padY=isN?padNv*2:(isI?2:0);
+      var lines=wrap(tokens(b.lines),(cw-padX)*SL,font);
+      var k=0;
+      while(k<lines.length){
+        var avail=ch-y-padY-pm; var n=Math.floor((avail+0.01)/lh);
+        if(n<=0){ if(y===0){n=1;} else {nb();continue;} }
+        n=Math.min(n,lines.length-k);
+        var part=lines.slice(k,k+n), endsPara=(k+n===lines.length);
+        var st;
+        if(isN) st='font:400 '+fsN.toFixed(2)+'px PAS,Arial,sans-serif;color:#3d463f;background:#edf2eb;border-radius:3px;padding:'+padNv+'px '+padN+'px;';
+        else if(isI) st='font:400 '+fs.toFixed(2)+'px PNS,serif;background:#f8f0d6;border-right:3px solid #c9a64a;padding:1px 7px;';
+        else st='font:400 '+fs.toFixed(2)+'px PNS,serif;';
+        cur.push('<div style="'+st+'margin-bottom:'+pm.toFixed(2)+'px">'+part.map(function(l,j){
+          // a line ending at a <br> or the paragraph end is not justified
+          var last=l.b||isN;return lineDiv(l.w,lh,last);}).join('')+'</div>');
+        y+=n*lh+padY+pm;k+=n;
+        if(k<lines.length)nb();
+      }
+    }
+    if(cur.length)boxes.push(cur);
+    return {boxes:boxes,marks:marks,cw:cw,ch:ch};
+  }
+  function pageHTML(L,cols,num,cw,ch){
+    var s='<div class="pg'+(L.tight?' tight':'')+'" style="width:'+L.w+'px;height:'+L.h+'px;--fs:'+L.fs+';--h:'+L.h2+'">';
+    for(var c=0;c<L.cols;c++){
+      var right=L.m[1]+c*(cw+L.gap);
+      s+='<div class="col" style="top:'+L.m[0]+'px;right:'+right+'px;width:'+cw+'px;height:'+ch+'px">'+(cols[c]||[]).join('')+'</div>';
+    }
+    if(L.cols===2) s+='<div class="rule" style="top:'+L.m[0]+'px;height:'+ch+'px;right:'+(L.m[1]+cw+L.gap/2)+'px"></div>';
+    if(num) s+='<div class="num" style="bottom:'+(L.m[2]/2-6)+'px">'+num+'</div>';
+    return s+'</div>';
+  }
+  function rawPage(L,inner){return '<div class="pg" style="width:'+L.w+'px;height:'+L.h+'px;--fs:'+L.fs+';--h:'+L.h2+'">'+inner+'</div>';}
+
+  // rasterize page html → JPEG bytes at scale
+  function raster(html,L,scale,css){
+    var holder=document.createElement('div');holder.innerHTML=html;var node=holder.firstChild;
+    var xhtml=new XMLSerializer().serializeToString(node);
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+L.w+'" height="'+L.h+'"><foreignObject x="0" y="0" width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>'+css+PAGE_CSS+'</style>'+xhtml.replace(/ xmlns="http:\/\/www.w3.org\/1999\/xhtml"/,'')+'</div></foreignObject></svg>';
+    return new Promise(function(res,rej){
+      var img=new Image();
+      img.onload=function(){
+        var cv=document.createElement('canvas');cv.width=Math.round(L.w*scale);cv.height=Math.round(L.h*scale);
+        var g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);
+        setTimeout(function(){ // give embedded fonts a beat
+          try{g.drawImage(img,0,0,cv.width,cv.height);}catch(e){rej(e);return;}
+          cv.toBlob(function(bl){ if(!bl){rej(new Error('toBlob'));return;} bl.arrayBuffer().then(function(ab){res({bytes:new Uint8Array(ab),w:cv.width,h:cv.height});});},'image/jpeg',0.8);
+        },30);
+      };
+      img.onerror=function(){rej(new Error('svg image failed'));};
+      img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+    });
+  }
+
+  // minimal PDF writer: pages [{w,h (pt), imgs:[{img,x,y,w,h}]}]
+  function writePDF(pages){
+    var enc=new TextEncoder(),chunks=[],len=0,offs=[];
+    function put(x){var u=typeof x==='string'?enc.encode(x):x;chunks.push(u);len+=u.length;}
+    var objs=[]; // filled sequentially
+    var nextId=3, pageIds=[], content=[];
+    put('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n'.replace(/[\u0080-ÿ]/g,'*'));
+    function obj(id,body,stream){offs[id]=len;put(id+' 0 obj\n'+body);if(stream){put('\nstream\n');put(stream);put('\nendstream');}put('\nendobj\n');}
+    pages.forEach(function(p){
+      var pid=nextId++,cid=nextId++,imgIds=[];
+      p.imgs.forEach(function(){imgIds.push(nextId++);});
+      var cs='';p.imgs.forEach(function(im,k){cs+='q '+im.w.toFixed(2)+' 0 0 '+im.h.toFixed(2)+' '+im.x.toFixed(2)+' '+im.y.toFixed(2)+' cm /Im'+k+' Do Q\n';});
+      var xo=p.imgs.map(function(im,k){return '/Im'+k+' '+imgIds[k]+' 0 R';}).join(' ');
+      obj(pid,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+p.w.toFixed(2)+' '+p.h.toFixed(2)+'] /Resources << /XObject << '+xo+' >> >> /Contents '+cid+' 0 R >>');
+      var cb=enc.encode(cs);obj(cid,'<< /Length '+cb.length+' >>',cb);
+      p.imgs.forEach(function(im,k){obj(imgIds[k],'<< /Type /XObject /Subtype /Image /Width '+im.img.w+' /Height '+im.img.h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+im.img.bytes.length+' >>',im.img.bytes);});
+      pageIds.push(pid);
+    });
+    obj(2,'<< /Type /Pages /Kids ['+pageIds.map(function(i){return i+' 0 R';}).join(' ')+'] /Count '+pageIds.length+' >>');
+    obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+    var xref=len,n=nextId;put('xref\n0 '+n+'\n0000000000 65535 f \n');
+    for(var i=1;i<n;i++)put(String(offs[i]).padStart(10,'0')+' 00000 n \n');
+    put('trailer\n<< /Size '+n+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF');
+    return new Blob(chunks,{type:'application/pdf'});
+  }
+
+  var PT=72/96, A4=[595.28,841.89], A5=[419.53,595.28], A6=[297.64,419.53];
+  // opts: {secs, title, sub, kind, onProgress}
+  function build(o){
+    return loadFonts().then(function(css){
+      var kind=o.kind, blocks=blocksFromSecs(o.secs), raws=[], L;
+      var hdr='<div class="hdr"><b>'+o.title+'</b><span>'+o.sub+'</span></div>';
+      if(kind==='a4'||kind==='a4c2'){
+        L=LAYOUTS[kind];var P=paginate(blocks,L,hdr);var per=L.cols;var n=Math.ceil(P.boxes.length/per);
+        for(var i=0;i<n;i++) raws.push(pageHTML(L,P.boxes.slice(i*per,i*per+per),String(i+1),P.cw,P.ch));
+        return rasterAll(raws,L,2.0,css,o).then(function(imgs){
+          return writePDF(imgs.map(function(im){return {w:A4[0],h:A4[1],imgs:[{img:im,x:0,y:0,w:A4[0],h:A4[1]}]};}));});
+      }
+      // booklets: A5 pages with cover, toc, content, padding to multiple of 4
+      L=LAYOUTS.a5;
+      var P2=paginate(blocks,L,null);
+      var tocItems=P2.marks;
+      var tocBlocksHtml=function(nums){return '<div class="toc"><h2>תוכן העניינים</h2><ol>'+tocItems.map(function(m,k){return '<li><span>'+m.t+'</span><span class="d"></span><span class="p">'+(nums?nums[k]:'00')+'</span></li>';}).join('')+'</ol></div>';};
+      var tocPages=tocItems.length?paginateRaw(tocItems,L).length:0;
+      var first=2+tocPages; // page number of first content page
+      var nums=tocItems.map(function(m){return first+m.box;});
+      var pages=[];
+      pages.push(rawPage(L,'<div class="cover"><div class="fr"><b>'+o.title+'</b><i>'+o.sub+'</i><small>'+(o.date||'')+'</small></div></div>'));
+      if(tocItems.length) paginateRaw(tocItems,L,nums).forEach(function(h,k){pages.push(pageHTML(L,[[h]],String(2+k),P2.cw,P2.ch));});
+      P2.boxes.forEach(function(b,k){pages.push(pageHTML(L,[b],String(first+k),P2.cw,P2.ch));});
+      while((pages.length+1)%4) pages.push(rawPage(L,''));
+      pages.push(rawPage(L,''));
+      var N=pages.length;
+      var scale = kind==='bookA4' ? 2.6 : 2.0;
+      return rasterAll(pages,L,scale,css,o).then(function(imgs){
+        if(kind==='bookA5') return writePDF(imgs.map(function(im){return {w:A5[0],h:A5[1],imgs:[{img:im,x:0,y:0,w:A5[0],h:A5[1]}]};}));
+        if(kind==='bookA4') return writePDF(imgs.map(function(im){return {w:A4[0],h:A4[1],imgs:[{img:im,x:0,y:0,w:A4[0],h:A4[1]}]};}));
+        var sheet = kind==='impA4' ? [A4[1],A4[0]] : [A5[1],A5[0]], half=sheet[0]/2, out=[];
+        function sh(Lp,Rp){out.push({w:sheet[0],h:sheet[1],imgs:[{img:imgs[Lp-1],x:0,y:0,w:half,h:sheet[1]},{img:imgs[Rp-1],x:half,y:0,w:half,h:sheet[1]}]});}
+        for(var i=0;i<N/4;i++){sh(2*i+1,N-2*i);sh(N-2*i-1,2*i+2);}
+        return writePDF(out);
+      });
+      function paginateRaw(items,L,nums){
+        // toc split into pages by measuring list items
+        var bl=[{k:'raw'}];var meas=document.createElement('div');meas.className='pg';meas.style.cssText='position:fixed;left:-99999px;top:0;width:'+L.w+'px;--fs:'+(parseFloat(L.fs)/ZOOM)+'px;--h:'+(parseFloat(L.h2)/ZOOM)+'px';
+        var col=document.createElement('div');col.className='col';col.style.cssText='position:static;width:'+P2.cw+'px';meas.appendChild(col);document.body.appendChild(meas);
+        var out=[],start=0;
+        while(start<items.length){var k=start,html='';
+          for(;k<items.length;k++){var sub=items.slice(start,k+1);col.innerHTML=(start===0?'<div class="toc"><h2>תוכן העניינים</h2>':'<div class="toc">')+'<ol>'+sub.map(function(m,j){return '<li><span>'+m.t+'</span><span class="d"></span><span class="p">'+(nums?nums[start+j]:'00')+'</span></li>';}).join('')+'</ol></div>';
+            if(col.scrollHeight>P2.ch&&k>start)break;html=col.innerHTML;}
+          out.push(html);start=k;}
+        document.body.removeChild(meas);return out;
+      }
+    });
+  }
+  function rasterAll(pages,L,scale,css,o){
+    var out=[],i=0;
+    function next(){ if(i>=pages.length) return Promise.resolve(out);
+      if(o.onProgress) o.onProgress(i,pages.length);
+      return raster(pages[i],L,scale,css).then(function(im){out.push(im);i++;return new Promise(function(r){setTimeout(r,0);}).then(next);}); }
+    return next();
+  }
+  // mincha + arvit flowing continuously over two A4 pages (front and back of one sheet), auto-fitted
+  function sheetBlocks(parts,dropNotes){var blocks=[],first=null;
+    parts.forEach(function(pp,k){var hdr='<div class="hdr"><b>'+pp.title+'</b><span>'+(pp.sub||'')+'</span></div>';
+      var bl=blocksFromSecs(pp.secs);if(dropNotes)bl=bl.filter(function(b){return b.k!=='n';});
+      if(k===0)first=hdr;else blocks.push({k:'hdr',html:hdr});blocks=blocks.concat(bl);});
+    return {blocks:blocks,first:first};}
+  function mkS(cols,fs){return {safety:0.95,tight:true,w:794,h:1123,m:[24,22,24,22],cols:cols,gap:14,fs:fs.toFixed(2)+'px',h2:(fs*1.18).toFixed(2)+'px'};}
+  function layoutMulti(parts,maxPages,dropNotes,minFs){
+    var sb=sheetBlocks(parts,dropNotes),best=null;
+    [2,3].forEach(function(cols){var lo=minFs,hi=17,found=null;
+      var P0=paginate(sb.blocks,mkS(cols,lo),sb.first); if(P0.boxes.length>cols*maxPages) return;
+      found={L:mkS(cols,lo),P:P0,fs:lo};
+      for(var it=0;it<9;it++){var mid=(lo+hi)/2;var L=mkS(cols,mid);var P=paginate(sb.blocks,L,sb.first);if(P.boxes.length<=cols*maxPages){found={L:L,P:P,fs:mid};lo=mid;}else hi=mid;}
+      if(!best||found.fs>best.fs)best=found;});
+    return best;}
+  function buildSheet(o){
+    return loadFonts().then(function(css){
+      var dropped=false,warn=false,best=null;
+      var tries=[[false,5.8],[false,4.8],[true,5.8],[true,4.8],[true,4.0],[true,3.4]];
+      for(var q=0;q<tries.length&&!best;q++){best=layoutMulti(o.pages,2,tries[q][0],tries[q][1]);if(best)dropped=tries[q][0];}
+      if(!best){warn=true;var sb=sheetBlocks(o.pages,true);var L=mkS(3,3.4);best={L:L,P:paginate(sb.blocks,L,sb.first),fs:3.4};}
+      var fontOk=true;try{fontOk=document.fonts.check('12px PNS','\u05d0');}catch(e){}
+      var raws=[];for(var i=0;i<best.P.boxes.length;i+=best.L.cols)raws.push(pageHTML(best.L,best.P.boxes.slice(i,i+best.L.cols),null,best.P.cw,best.P.ch));
+      var out=[],k=0;
+      function next(){if(k>=raws.length)return Promise.resolve(out);if(o.onProgress)o.onProgress(k,raws.length);
+        return raster(raws[k],best.L,2.4,css).then(function(im){out.push(im);k++;return next();});}
+      return next().then(function(imgs){var blob=writePDF(imgs.map(function(im){return {w:A4[0],h:A4[1],imgs:[{img:im,x:0,y:0,w:A4[0],h:A4[1]}]};}));
+        blob.warn=warn;blob.dropped=dropped;blob.pages=imgs.length;blob.pt=best.fs*0.75;blob.fontOk=fontOk;return blob;});
+    });
+  }
+  function fitInfo(secs,title,sub,minFs){
+    return loadFonts().then(function(){
+      var blocks=blocksFromSecs(secs),hdr='<div class="hdr"><b>'+title+'</b><span>'+(sub||'')+'</span></div>',best=null;
+      [2,3].forEach(function(cols){var lo=minFs||6,hi=17,found=null;
+        for(var it=0;it<9;it++){var mid=(lo+hi)/2;var P=paginate(blocks,{tight:true,w:794,h:1123,m:[24,22,24,22],cols:cols,gap:14,fs:mid.toFixed(2)+'px',h2:(mid*1.18).toFixed(2)+'px'},hdr);if(P.boxes.length<=cols){found={cols:cols,fs:mid};lo=mid;}else hi=mid;}
+        if(found&&(!best||found.fs>best.fs))best=found;});
+      if(!best){var P=paginate(blocks,{tight:true,w:794,h:1123,m:[24,22,24,22],cols:3,gap:14,fs:(minFs||6)+'px',h2:((minFs||6)*1.18)+'px'},hdr);best={cols:3,fs:0,pages:Math.ceil(P.boxes.length/3)};}
+      return best;});
+  }
+  // continuous flow of several prayers into maxPages pages; returns best {cols,fs} or fs:0
+  function fitMulti(parts,maxPages,dropNotes){
+    return loadFonts().then(function(){
+      var blocks=[],first=null;
+      parts.forEach(function(pp,k){var hdr='<div class="hdr"><b>'+pp.title+'</b><span>'+(pp.sub||'')+'</span></div>';
+        var bl=blocksFromSecs(pp.secs);if(dropNotes)bl=bl.filter(function(b){return b.k!=='n';});
+        if(k===0)first=hdr;else blocks.push({k:'hdr',html:hdr});blocks=blocks.concat(bl);});
+      var best=null;
+      [2,3].forEach(function(cols){var lo=5.5,hi=17,found=null;
+        for(var it=0;it<9;it++){var mid=(lo+hi)/2;var P=paginate(blocks,{tight:true,w:794,h:1123,m:[24,22,24,22],cols:cols,gap:14,fs:mid.toFixed(2)+'px',h2:(mid*1.18).toFixed(2)+'px'},first);if(P.boxes.length<=cols*maxPages){found={cols:cols,fs:mid};lo=mid;}else hi=mid;}
+        if(found&&(!best||found.fs>best.fs))best=found;});
+      return best||{fs:0};});
+  }
+  root.PdfMaker={build:build,buildSheet:buildSheet,fit:fitInfo,fitMulti:fitMulti,zoom:function(){return ZOOM;}};
+})(window);
+
+(function(){
+  var ZNAMES={'עלות השחר':'עלות השחר','משיכיר':'משיכיר','הנץ החמה':'הנץ החמה','סזק"ש (מג"א)':'סוף זמן ק״ש (מג״א)','סזק"ש (גר"א)':'סוף זמן ק״ש (גר״א)','סזת"פ (מג"א)':'סוף זמן תפילה (מג״א)','סזת"פ (גר"א)':'סוף זמן תפילה (גר״א)','חצות היום':'חצות היום','מנחה גדולה':'מנחה גדולה','מנחה קטנה':'מנחה קטנה','פלג המנחה':'פלג המנחה','שקיעה':'שקיעה','צאה"כ':'צאת הכוכבים','הדלקת נרות':'הדלקת נרות','מוצ"ש':'צאת השבת','מוצ"ש (רבינו תם)':'צאת השבת (ר״ת)','מוציו"ט':'צאת החג','מוציו"ט (רבינו תם)':'צאת החג (ר״ת)','מוצשויו"ט':'צאת שבת וחג','מוצשויו"ט (רבינו תם)':'צאת שבת וחג (ר״ת)'};
+  var NUSNAME={a:'אשכנז',s:'ספרד',em:'עדות המזרח'};
+  var LAST=null,DAYS=null,T=null,Z={},st={nus:'s',city:76,size:1.3,date:null,night:false},listNus='s',stack=[];
+  function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+  function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+  (function(){var n=lsGet('sid-nus');if(n&&NUSNAME[n])st.nus=n;var c=parseInt(lsGet('sid-city'),10);if(c>=0&&c<CITIES.length)st.city=c;var s=parseFloat(lsGet('sid-size'));if(s>=0.9&&s<=2.8)st.size=s;})();
+  document.documentElement.style.setProperty('--size',st.size+'rem');
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function clean(s){return esc(s.replace(/~/g,'').replace(/K/g,'ׇ').replace(/;/g,'׃').trim());}
+
+  function partsIn(zone,ms){var f=new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});var o={};f.formatToParts(new Date(ms)).forEach(function(p){o[p.type]=p.value;});return {y:+o.year,m:+o.month,d:+o.day,h:+o.hour%24,mi:+o.minute};}
+  function offsetMin(zone,y,m,d){var t=Date.UTC(y,m-1,d,12);var p=partsIn(zone,t);return Math.round((Date.UTC(p.y,p.m-1,p.d,p.h,p.mi)-t)/60000);}
+  function idxOf(y,m,d){var s=DAYS.start.split('-');return Math.round((Date.UTC(y,m-1,d)-Date.UTC(+s[0],+s[1]-1,+s[2]))/864e5);}
+  function ymdOf(i){var s=DAYS.start.split('-');var t=new Date(Date.UTC(+s[0],+s[1]-1,+s[2])+i*864e5);return {y:t.getUTCFullYear(),m:t.getUTCMonth()+1,d:t.getUTCDate()};}
+  function hm(min){min=((min%1440)+1440)%1440;return Math.floor(min/60)+':'+String(min%60).padStart(2,'0');}
+  function zmanim(i){
+    var lines=Z[st.city];if(!lines||!lines[i])return null;
+    var s=lines[i],c=CITIES[st.city],ymd=ymdOf(i);var corr=offsetMin(c[3],ymd.y,ymd.m,ymd.d)-Math.round(c[2]*60);
+    var out=[];for(var k=0;k<ZL.core.length;k++){var h=s.substr(k*3,3);if(h!=='---')out.push([ZL.core[k],parseInt(h,16)+corr]);}
+    var rest=s.substr(ZL.core.length*3);for(var q=0;q+4<=rest.length;q+=4)out.push([ZL.extra[rest.charCodeAt(q)-65],parseInt(rest.substr(q+1,3),16)+corr]);
+    return out;
+  }
+  function zget(z,l){if(!z)return null;for(var k=0;k<z.length;k++)if(z[k][0]===l)return z[k][1];return null;}
+  function current(){
+    var c=CITIES[st.city];
+    if(st.date){var p=st.date.split('-');var i=idxOf(+p[0],+p[1],+p[2]);return {civil:i,idx:i+(st.night?1:0),night:st.night,manual:true};}
+    var now=partsIn(c[3],Date.now());var i=idxOf(now.y,now.m,now.d);var ss=zget(zmanim(i),'שקיעה');var night=ss!=null&&(now.h*60+now.mi)>=ss;
+    return {civil:i,idx:i+(night?1:0),night:night,manual:false,nowMin:now.h*60+now.mi};
+  }
+  function dayData(i){
+    var row=DAYS[CITIES[st.city][1]?'il':'ch'][i];if(!row)return null;
+    var big=BigInt('0x'+(row[0]||'0')),bits=new Set();for(var k=0;k<DAYS.toks.length;k++)if((big>>BigInt(k))&1n)bits.add(DAYS.toks[k]);
+    var mk={};DAYS.mkeys.forEach(function(key,k){var vi=row[1][k];mk[key]=vi<0?null:DAYS.vals[vi];});
+    return {bits:bits,mk:mk,info:row[2]};
+  }
+
+  // ---- navigation ----
+  var VIEWS=['vMain','vNus','vList','vZ','vSet','vAbout','vRead'];
+  function show(v,title,push){
+    VIEWS.forEach(function(id){$(id).hidden=id!==v;});
+    $('title').textContent=title; $('back').hidden=v==='vMain'; $('ticker').hidden=v==='vRead';
+    if(push){stack.push([v,title]);try{history.pushState({d:stack.length},'');}catch(e){}}
+    window.scrollTo(0,0);
+  }
+  function goBack(){ if(stack.length>1){stack.pop();var t=stack[stack.length-1];if(t[0]==='vList')renderList(listNus);if(t[0]==='vMain')renderMain();show(t[0],t[1],false);} }
+  $('back').onclick=function(){try{history.back();}catch(e){goBack();}};
+  window.addEventListener('popstate',function(){goBack();});
+
+  function btn(label,cls){return '<button type="button" class="mbtn'+(cls?' '+cls:'')+'">'+esc(label)+'</button>';}
+  function bind(container,handlers){[].forEach.call($(container).querySelectorAll('.mbtn'),function(b,k){b.onclick=handlers[k];});}
+
+  function ticker(){
+    var cur=current();if(cur.idx<0||cur.idx>=DAYS.n){$('tickerText').textContent='התאריך מחוץ לטווח הנתונים (2026–2036)';return;}
+    var day=dayData(cur.idx),info=day.info.slice();if(cur.night&&info.length)info[0]='אור ל'+info[0];
+    var z=zmanim(cur.civil)||[];var zs=z.map(function(r){return (ZNAMES[r[0]]||r[0])+': '+hm(r[1]);});
+    $('tickerText').textContent=info.concat(zs).join('     ·     ');
+  }
+  function renderMain(){
+    ticker();
+    $('vMain').innerHTML=btn('לבחירת נוסח')+btn('תפילה לעת צרה ומלחמה')+btn('הגדרות')+btn('זמני היום')+btn('עזרה')+btn('אודות');
+    bind('vMain',[
+      function(){renderNus();show('vNus','לבחירת נוסח',true);},
+      function(){openPrayer('tzahal','תפילה לעת צרה ומלחמה');},
+      function(){syncSet();show('vSet','הגדרות',true);},
+      function(){renderZ();show('vZ','זמני היום',true);},
+      function(){openPrayer('help','עזרה');},
+      function(){show('vAbout','אודות',true);}
+    ]);
+  }
+  function renderNus(){
+    $('vNus').innerHTML=btn('אשכנז')+btn('ספרד')+btn('עדות המזרח');
+    bind('vNus',['a','s','em'].map(function(n){return function(){renderList(n);show('vList','נוסח '+NUSNAME[n],true);};}));
+  }
+  function menuItems(n){
+    var cur=current(),day=dayData(cur.idx),b=day?day.bits:new Set(),L=[];
+    L.push([b.has('MUSAF')?'שחרית ומוסף':'שחרית',n+'_shacharit']);L.push(['מנחה','specials/'+n+'_mincha']);L.push(['ערבית','specials/'+n+'_arvit']);
+    L.push(['קריאת שמע שעל המיטה',n+'_mita']);L.push(['תיקון חצות','tikun_chatzot']);L.push(['ברכת המזון',n+'_mazon']);L.push(['מעין שלוש',n+'_shalosh']);
+    L.push(['שבע ברכות',n+'_shevaBrachot']);L.push(['סדר ברית מילה',n+'_brit']);L.push(['בורא נפשות',n+'_nefashot']);L.push(['אשר יצר',n+'_yatzar']);
+    L.push(['תפילת הדרך',n+'_derech']);L.push(['קידוש לבנה',n+'_levana']);
+    if(b.has('OMER'))L.push(['ספירת העומר',n+'_omer']);if(b.has('CHANUKA'))L.push(['הדלקת נרות חנוכה',n+'_nerot']);
+    return L;
+  }
+  function renderList(n){
+    listNus=n;var L=menuItems(n);
+    $('vList').innerHTML=L.map(function(x){return btn(x[0]);}).join('');
+    bind('vList',L.map(function(x){return function(){st.nus=n;if(x[1].indexOf('motzash_')===0)openMotzash(n,x[0]);else openPrayer(x[1],x[0]);};}));
+  }
+  function renderZ(){
+    var cur=current(),z=zmanim(cur.civil),c=CITIES[st.city];
+    if(!z){$('vZ').innerHTML='<div class="panel">אין נתונים לתאריך הזה.</div>';return;}
+    var civ=ymdOf(cur.civil),cd=new Date(Date.UTC(civ.y,civ.m-1,civ.d)).toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+    var day=dayData(cur.civil),next=false;
+    var rows=z.map(function(r){var cls='';if(!cur.manual&&!next&&r[1]>cur.nowMin){cls=' class="hl"';next=true;}return '<tr'+cls+'><td>'+esc(ZNAMES[r[0]]||r[0])+'</td><td class="t">'+hm(r[1])+'</td></tr>';}).join('');
+    $('vZ').innerHTML='<div class="panel"><h2>זמני היום ל: '+esc(c[0])+'</h2><div style="color:var(--muted);margin-bottom:6px">'+esc((day&&day.info[0])||'')+' · '+cd+'</div><table class="z">'+rows+'</table><p class="note">שים לב! אסור להשתמש בזמנים אלו הלכה למעשה וצריך לקחת בחשבון סטייה אפשרית של כמה דקות. הזמנים מותאמים אוטומטית לשעון קיץ וחורף.</p></div>';
+  }
+
+  // ---- reader ----
+  function toHTML(lines){
+    var secs=[],cur={t:null,items:[]};secs.push(cur);var mode=null,buf=[],text=[];
+    function flush(arr,kind){
+      while(arr.length&&!arr[0].trim())arr.shift();while(arr.length&&!arr[arr.length-1].trim())arr.pop();if(!arr.length)return;
+      if(kind==='note'&&cur.t&&arr[0].trim()===cur.t.trim()){arr.shift();while(arr.length&&!arr[0].trim())arr.shift();if(!arr.length)return;}
+      var paras=[[]];arr.forEach(function(l){if(!l.trim()){if(paras[paras.length-1].length)paras.push([]);}else paras[paras.length-1].push(clean(l));});
+      paras.forEach(function(p){if(p.length)cur.items.push([kind,p]);});
+    }
+    function newsec(t){cur={t:t,items:[]};secs.push(cur);}
+    var ENDS={note:':)',ins:'])','var':'===)',v2:'---)'};
+    lines.forEach(function(line){
+      var s=line.trim();if(s==='[][]'||s===':=:=')return;
+      if(mode===null){
+        if(s.indexOf('-----')===0){flush(text,'text');text=[];newsec(s.substring(5).trim());return;}
+        if(s==='(:'||s==='(['||s==='(==='||s==='(---'){flush(text,'text');text=[];mode=s==='(:'?'note':s==='(['?'ins':s==='(==='?'var':'v2';buf=[];return;}
+        if(s===':)'||s==='])'||s==='===)'||s==='---)')return;
+        text.push(line);
+      }else{
+        if(s.indexOf('-----')===0){flush(buf,mode);buf=[];newsec(s.substring(5).trim());return;}
+        if(s===ENDS[mode]){flush(buf,mode);mode=null;buf=[];return;}
+        if(s==='(:'||s==='(['||s==='(==='||s==='(---'){flush(buf,mode);buf=[];mode=s==='(:'?'note':s==='(['?'ins':s==='(==='?'var':'v2';return;}
+        buf.push(line);
+      }
+    });
+    if(mode)flush(buf,mode);flush(text,'text');
+    var html=[],opts=[],n=0;
+    secs.forEach(function(sec){if(!sec.items.length)return;var id='sec'+(n++);
+      html.push('<section id="'+id+'">'+(sec.t?'<h2>'+esc(sec.t)+'</h2>':''));if(sec.t)opts.push('<option value="'+id+'">'+esc(sec.t)+'</option>');
+      sec.items.forEach(function(it){var k=it[0],inner=it[1].join('<br>');html.push(k==='text'?'<p class="t">'+inner+'</p>':k==='note'?'<p class="n">'+inner+'</p>':'<p class="t ins">'+inner+'</p>');});
+      html.push('</section>');});
+    return {html:html.join(''),opts:opts.join(''),secs:secs.filter(function(s){return s.items.length;})};
+  }
+  var MOTZ=null;
+  function openMotzash(n,label){
+    (MOTZ?Promise.resolve(MOTZ):fetch('data/motzash.json').then(function(r){return r.json();}).then(function(j){MOTZ=j;return j;})).then(function(M){
+      var r=toHTML(M[n]);
+      LAST={f:'motzash_'+n,secs:r.secs,title:'ערבית למוצאי שבת',nus:'נוסח '+NUSNAME[n],day:'לכל מוצאי שבת'};
+      $('text').innerHTML=r.html;$('jump').innerHTML=r.opts||'<option>—</option>';
+      $('rctx').textContent='נוסח '+NUSNAME[n]+' · נוסח אחד לכל מוצאי שבת, עם כל האפשרויות';
+      show('vRead',label,true);
+    }).catch(function(){alert0();});
+  }
+  function alert0(){$('rctx').textContent='לא הצלחתי לטעון את הנוסח.';}
+  function openPrayer(f,label){
+    var cur=current(),day=dayData(cur.idx);if(!day){return;}
+    var r=toHTML(TfilonResolver.resolve(f,T,{bits:day.bits,mk:day.mk},{nusach:st.nus}));
+    LAST={f:f,secs:r.secs,title:label,nus:f.indexOf('_')>0?'נוסח '+NUSNAME[st.nus]:'',day:(cur.night?'אור ל':'')+(day.info[0]||'')};$('text').innerHTML=r.html;$('jump').innerHTML=r.opts||'<option>—</option>';
+    var info=day.info.filter(function(t){return t.indexOf('דף יומי')!==0;});
+    $('rctx').textContent=(f.indexOf('_')>0?'נוסח '+NUSNAME[st.nus]+' · ':'')+(cur.night?'אור ל':'')+info.slice(0,4).join(' · ');
+    show('vRead',label,true);
+  }
+  var NAMES={a4:'A4',a4c2:'A4-2cols',bookA5:'booklet-A5',bookA4:'booklet-A4',impA4:'print-on-A4',impA5:'print-on-A5'},busy=false;
+  $('pdfBtn').onclick=function(){$('pdfStatus').textContent='';$('sheetOpt').hidden=!(LAST&&/(_(mincha|arvit)$)|(^motzash_)/.test(LAST.f));$('motzOpt').hidden=!(LAST&&/_arvit$/.test(LAST.f));if(LAST)$('sheetLbl').textContent=LAST.title+' על דף אחד דו־צדדי (2 עמודים)';$('pdfModal').hidden=false;};
+  window.__toSecs=function(lines){return toHTML(lines).secs;};
+  // ordinary browser download (GitHub Pages and any normal site)
+  function plainSave(blob,fn){var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},4000);return Promise.resolve();}
+  function secsFor(f,idx){var d=dayData(idx);if(!d)return null;return {secs:toHTML(TfilonResolver.resolve(f,T,{bits:d.bits,mk:d.mk},{nusach:st.nus})).secs,info:d.info};}
+  $('pdfClose').onclick=function(){if(!busy)$('pdfModal').hidden=true;};
+  [].forEach.call($('pdfOpts').children,function(b){b.onclick=function(){
+    if(busy||!LAST)return;busy=true;var k=b.getAttribute('data-k');var stt=$('pdfStatus');stt.textContent='מכין את הקובץ…';
+    var dl=(window.claude&&window.claude.use)?window.claude.use('downloads'):Promise.resolve(null);
+    var y=current().civil,civ=ymdOf(y);
+    if(k==='motz'){
+      var nn=st.nus;stt.textContent='טוען את הנוסח…';
+      (MOTZ?Promise.resolve(MOTZ):fetch('data/motzash.json').then(function(r){return r.json();}).then(function(j){MOTZ=j;return j;}))
+      .then(function(M){return PdfMaker.buildSheet({pages:[{secs:toHTML(M[nn]).secs,title:'ערבית למוצאי שבת',sub:esc('נוסח '+NUSNAME[nn]+' · לכל מוצאי שבת')}],onProgress:function(i,n){stt.textContent='מכין עמוד '+(i+1)+' מתוך '+n+'…';}});})
+      .then(function(blob){window.__lastPdf=blob;stt.textContent='הקובץ מוכן: '+blob.pages+' עמודים. גודל האות: '+blob.pt.toFixed(1)+' נק׳.'+(blob.dropped?' (בלי הוראות)':'')+(blob.fontOk?'':' [גופן חלופי]')+(PdfMaker.zoom()!==1?' [הגדלת טקסט '+Math.round(PdfMaker.zoom()*100)+'%]':'');
+        var fn='ערבית למוצאי שבת - '+NUSNAME[nn]+'.pdf';
+        return dl.then(function(d){if(!d)return plainSave(blob,fn).then(function(){stt.textContent='הקובץ הורד. הדפס דו־צדדי על דף אחד.';});
+          return d.save({filename:fn,data:blob}).then(function(){stt.textContent='הקובץ נשמר. הדפס דו־צדדי על דף אחד.';},function(e){stt.textContent=e&&e.code==='declined'?'ההורדה בוטלה.':'לא הצלחתי לשמור את הקובץ.';});});})
+      .catch(function(e){console.error(e);stt.textContent='לא הצלחתי להכין את הקובץ.';}).then(function(){busy=false;});
+      return;
+    }
+    if(k==='sheet'){
+      var sub=esc([LAST.nus,LAST.day].filter(Boolean).join(' · '));
+      PdfMaker.buildSheet({pages:[{secs:LAST.secs,title:esc(LAST.title),sub:sub}],
+        onProgress:function(i,n){stt.textContent='מכין עמוד '+(i+1)+' מתוך '+n+'…';}})
+      .then(function(blob){window.__lastPdf=blob;stt.textContent=(blob.warn?'שים לב: היום התפילה ארוכה במיוחד, ולכן הקובץ יצא ב־'+blob.pages+' עמודים.':'הקובץ מוכן: '+LAST.title+' על שני עמודים.')+(blob.dropped?' כדי שייכנס, הושמטו ההוראות.':'')+' גודל האות: '+blob.pt.toFixed(1)+' נק׳.';
+        return dl.then(function(d){if(!d){var fn0=LAST.title+' '+(LAST.day||'').replace(/["\\\\/:*?<>|]/g,'')+' דף אחד.pdf';return plainSave(blob,fn0).then(function(){stt.textContent='הקובץ הורד. הדפס דו־צדדי על דף אחד.';});}
+          return d.save({filename:LAST.title+' '+(LAST.day||'').replace(/["\\/:*?<>|]/g,'')+' דף אחד.pdf',data:blob}).then(function(){stt.textContent='הקובץ נשמר. הדפס דו־צדדי על דף אחד.';},function(e){stt.textContent=e&&e.code==='declined'?'ההורדה בוטלה.':'לא הצלחתי לשמור את הקובץ.';});});})
+      .catch(function(e){console.error(e);stt.textContent='לא הצלחתי להכין את הקובץ.';}).then(function(){busy=false;});
+      return;
+    }
+    PdfMaker.build({secs:LAST.secs,title:esc(LAST.title),sub:esc([LAST.nus,LAST.day].filter(Boolean).join(' · ')),date:new Date(Date.UTC(civ.y,civ.m-1,civ.d)).toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}),kind:k,
+      onProgress:function(i,n){stt.textContent='מכין עמוד '+(i+1)+' מתוך '+n+'…';}})
+    .then(function(blob){window.__lastPdf=blob;stt.textContent='הקובץ מוכן ('+(blob.size/1048576).toFixed(1)+' MB).';
+      return dl.then(function(d){ if(!d){return plainSave(blob,LAST.title.replace(/[\\\\/:*?"<>|]/g,'')+' '+NAMES[k]+'.pdf').then(function(){stt.textContent='הקובץ הורד.';});}
+        var fn=LAST.title.replace(/[\\/:*?"<>|]/g,'')+' '+NAMES[k]+'.pdf';
+        return d.save({filename:fn,data:blob}).then(function(){stt.textContent='הקובץ נשמר.';},function(e){stt.textContent=e&&e.code==='declined'?'ההורדה בוטלה.':'לא הצלחתי לשמור את הקובץ.';});});})
+    .catch(function(e){console.error(e);stt.textContent='לא הצלחתי להכין את הקובץ.';})
+    .then(function(){busy=false;});
+  };});
+  $('jump').onchange=function(){var el=$($('jump').value);if(el)el.scrollIntoView();};
+  function setSize(d){st.size=Math.max(0.9,Math.min(2.8,+(st.size+d).toFixed(2)));document.documentElement.style.setProperty('--size',st.size+'rem');lsSet('sid-size',st.size);$('fsVal').textContent=Math.round(st.size*16)+'px';}
+  $('rUp').onclick=$('fsUp').onclick=function(){setSize(0.1);};$('rDown').onclick=$('fsDown').onclick=function(){setSize(-0.1);};
+
+  // ---- settings ----
+  $('citySel').innerHTML=CITIES.map(function(c,i){return '<option value="'+i+'">'+esc(c[0])+'</option>';}).join('');
+  function syncSet(){[].forEach.call($('nusSeg').children,function(b){b.setAttribute('aria-pressed',b.getAttribute('data-n')===st.nus);});$('citySel').value=String(st.city);$('fsVal').textContent=Math.round(st.size*16)+'px';$('dateSel').value=st.date||'';$('nightSel').checked=!!st.night;}
+  [].forEach.call($('nusSeg').children,function(b){b.onclick=function(){st.nus=b.getAttribute('data-n');lsSet('sid-nus',st.nus);syncSet();};});
+  $('citySel').onchange=function(){st.city=+$('citySel').value;lsSet('sid-city',st.city);};
+  $('dateSel').onchange=function(){st.date=$('dateSel').value||null;};
+  $('nightSel').onchange=function(){st.night=$('nightSel').checked;if(!st.date){var y=ymdOf(current().civil);st.date=y.y+'-'+String(y.m).padStart(2,'0')+'-'+String(y.d).padStart(2,'0');$('dateSel').value=st.date;}};
+  $('todayBtn').onclick=function(){st.date=null;st.night=false;syncSet();};
+  $('saveSet').onclick=function(){loadCity(st.city).then(function(){renderMain();try{history.back();}catch(e){goBack();}});};
+
+  function loadCity(i){if(Z[i])return Promise.resolve();return fetch('data/z/'+i+'.txt').then(function(r){return r.text();}).then(function(t){Z[i]=t.split('\n');});}
+  Promise.all([fetch('data/days.json').then(function(r){return r.json();}),fetch('data/texts.json').then(function(r){return r.json();})]).then(function(a){DAYS=a[0];T=a[1];return loadCity(st.city);})
+  .then(function(){stack=[['vMain','תפילון']];renderMain();show('vMain','תפילון',false);setInterval(function(){if(!st.date)ticker();},60000);})
+  .catch(function(e){$('vMain').innerHTML='<div class="panel">לא הצלחתי לטעון את נתוני הסידור. נסה לרענן את הדף.</div>';console.error(e);});
+})();
+</script>
+
+</body>
+</html>
