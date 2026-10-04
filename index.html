@@ -691,9 +691,9 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
     if(k==='motz'){
       var nn=st.nus;stt.textContent='טוען את הנוסח…';
       (MOTZ?Promise.resolve(MOTZ):fetch('data/motzash.json').then(function(r){return r.json();}).then(function(j){MOTZ=j;return j;}))
-      .then(function(M){return PdfMaker.buildSheet({pages:[{secs:toHTML(M[nn]).secs,title:'ערבית למוצאי שבת',sub:esc('נוסח '+NUSNAME[nn]+' · לכל מוצאי שבת')}],onProgress:function(i,n){stt.textContent='מכין עמוד '+(i+1)+' מתוך '+n+'…';}});})
+      .then(function(M){return PdfMaker.buildSheet({pages:[{secs:toHTML(M[nn]).secs,title:'תפילת ערבית',sub:esc('נוסח '+NUSNAME[nn])}],onProgress:function(i,n){stt.textContent='מכין עמוד '+(i+1)+' מתוך '+n+'…';}});})
       .then(function(blob){window.__lastPdf=blob;stt.textContent='הקובץ מוכן: '+blob.pages+' עמודים. גודל האות: '+blob.pt.toFixed(1)+' נק׳.'+(blob.dropped?' (בלי הוראות)':'')+(blob.fontOk?'':' [גופן חלופי]')+(PdfMaker.zoom()!==1?' [הגדלת טקסט '+Math.round(PdfMaker.zoom()*100)+'%]':'');
-        var fn='ערבית למוצאי שבת - '+NUSNAME[nn]+'.pdf';
+        var fn='תפילת ערבית - '+NUSNAME[nn]+'.pdf';
         return dl.then(function(d){if(!d)return plainSave(blob,fn).then(function(){stt.textContent='הקובץ הורד. הדפס דו־צדדי על דף אחד.';});
           return d.save({filename:fn,data:blob}).then(function(){stt.textContent='הקובץ נשמר. הדפס דו־צדדי על דף אחד.';},function(e){stt.textContent=e&&e.code==='declined'?'ההורדה בוטלה.':'לא הצלחתי לשמור את הקובץ.';});});})
       .catch(function(e){console.error(e);stt.textContent='לא הצלחתי להכין את הקובץ.';}).then(function(){busy=false;});
