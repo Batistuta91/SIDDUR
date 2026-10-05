@@ -238,6 +238,7 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
   function blocksFromSecs(secs){
     var B=[];
     secs.forEach(function(sec){
+      if(sec.brk)B.push({k:'pb'});
       if(sec.t){var e=sec.t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');B.push({k:'h2',html:e,toc:e});}
       sec.items.forEach(function(it){B.push({k:it[0]==='text'?'t':it[0]==='note'?'n':'ins',lines:it[1]});});
     });
@@ -328,6 +329,7 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
     if(headerHtml)hdr(headerHtml);
     for(var i=0;i<blocks.length;i++){var b=blocks[i];
       if(b.k==='hdr'){hdr(b.html);continue;}
+      if(b.k==='pb'){if(y>0)nb();continue;}
       if(b.k==='h2'){
         var hl=wrap(tokens([b.html]),cw*SL,fH),H=hl.length*lhH+padHt+padHb+1+mbH;
         if(y>0&&y+H+2*lhT>ch)nb();
@@ -609,12 +611,13 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
     L.push(['שבע ברכות',n+'_shevaBrachot']);L.push(['סדר ברית מילה',n+'_brit']);L.push(['בורא נפשות',n+'_nefashot']);L.push(['אשר יצר',n+'_yatzar']);
     L.push(['תפילת הדרך',n+'_derech']);L.push(['קידוש לבנה',n+'_levana']);
     if(b.has('OMER'))L.push(['ספירת העומר',n+'_omer']);if(b.has('CHANUKA'))L.push(['הדלקת נרות חנוכה',n+'_nerot']);
+    if(n==='em')L.push(['סדר חנוכת הבית','chanukatHabayit']);
     return L;
   }
   function renderList(n){
     listNus=n;var L=menuItems(n);
     $('vList').innerHTML=L.map(function(x){return btn(x[0]);}).join('');
-    bind('vList',L.map(function(x){return function(){st.nus=n;if(x[1].indexOf('motzash_')===0)openMotzash(n,x[0]);else openPrayer(x[1],x[0]);};}));
+    bind('vList',L.map(function(x){return function(){st.nus=n;if(x[1].indexOf('motzash_')===0)openMotzash(n,x[0]);else if(x[1]==='chanukatHabayit')openChanukatHabayit(x[0]);else openPrayer(x[1],x[0]);};}));
   }
   function renderZ(){
     var cur=current(),z=zmanim(cur.civil),c=CITIES[st.city];
@@ -634,16 +637,18 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
       var paras=[[]];arr.forEach(function(l){if(!l.trim()){if(paras[paras.length-1].length)paras.push([]);}else paras[paras.length-1].push(clean(l));});
       paras.forEach(function(p){if(p.length)cur.items.push([kind,p]);});
     }
-    function newsec(t){cur={t:t,items:[]};secs.push(cur);}
+    function newsec(t,brk){cur={t:t,items:[],brk:!!brk};secs.push(cur);}
     var ENDS={note:':)',ins:'])','var':'===)',v2:'---)'};
     lines.forEach(function(line){
       var s=line.trim();if(s==='[][]'||s===':=:=')return;
       if(mode===null){
+        if(s.indexOf('=====')===0){flush(text,'text');text=[];newsec(s.substring(5).trim(),true);return;}
         if(s.indexOf('-----')===0){flush(text,'text');text=[];newsec(s.substring(5).trim());return;}
         if(s==='(:'||s==='(['||s==='(==='||s==='(---'){flush(text,'text');text=[];mode=s==='(:'?'note':s==='(['?'ins':s==='(==='?'var':'v2';buf=[];return;}
         if(s===':)'||s==='])'||s==='===)'||s==='---)')return;
         text.push(line);
       }else{
+        if(s.indexOf('=====')===0){flush(buf,mode);buf=[];newsec(s.substring(5).trim(),true);return;}
         if(s.indexOf('-----')===0){flush(buf,mode);buf=[];newsec(s.substring(5).trim());return;}
         if(s===ENDS[mode]){flush(buf,mode);mode=null;buf=[];return;}
         if(s==='(:'||s==='(['||s==='(==='||s==='(---'){flush(buf,mode);buf=[];mode=s==='(:'?'note':s==='(['?'ins':s==='(==='?'var':'v2';return;}
@@ -665,6 +670,16 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
       LAST={f:'motzash_'+n,secs:r.secs,title:'ערבית למוצאי שבת',nus:'נוסח '+NUSNAME[n],day:'לכל מוצאי שבת'};
       $('text').innerHTML=r.html;$('jump').innerHTML=r.opts||'<option>—</option>';
       $('rctx').textContent='נוסח '+NUSNAME[n]+' · נוסח אחד לכל מוצאי שבת, עם כל האפשרויות';
+      show('vRead',label,true);
+    }).catch(function(){alert0();});
+  }
+  var CHB=null;
+  function openChanukatHabayit(label){
+    (CHB?Promise.resolve(CHB):fetch('data/chanukatHabayit.json').then(function(r){return r.json();}).then(function(j){CHB=j;return j;})).then(function(M){
+      var r=toHTML(M.em);
+      LAST={f:'chanukatHabayit',secs:r.secs,title:'סדר חנוכת הבית',nus:'',day:''};
+      $('text').innerHTML=r.html;$('jump').innerHTML=r.opts||'<option>—</option>';
+      $('rctx').textContent='כפי שסידר הגאון החיד״א בספרו תורת השלמים · נוסח עדות המזרח';
       show('vRead',label,true);
     }).catch(function(){alert0();});
   }
