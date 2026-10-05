@@ -526,27 +526,23 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
         if(found&&(!best||found.fs>best.fs))best=found;});
       return best||{fs:0};});
   }
-  // כל קבוצת secs (לדוגמה: "חלק" אחד) מקבלת עמוד/עמודים משלה, עם גודל
-  // אות שמחושב בנפרד לכל קבוצה (חיפוש בינארי) כך שהיא תיכנס, אם אפשר,
-  // בדיוק לעמוד אחד - קבוצות קצרות יקבלו אות גדולה ונוחה, קבוצות ארוכות
-  // אות קטנה יותר, כל אחת בנפרד על בסיס האורך שלה בפועל.
+  // מחפשים גודל אות אחד ואחיד לכל הקבוצות (לדוגמה: כל ה"חלקים") יחד, בחיפוש
+  // בינארי - הגדול ביותר שעדיין מאפשר לכל קבוצה בנפרד להיכנס לעמוד אחד
+  // (כלומר מוגבל על ידי הקבוצה הארוכה ביותר). כך הגופן זהה בכל הדפים, במקום
+  // שישתנה קבוצה-קבוצה. אם אפילו בגודל המינימלי קבוצה מסוימת לא נכנסת
+  // לעמוד אחד, היא פשוט תגלוש לעמוד נוסף (באותו גודל אות האחיד).
   function buildFitted(o){
     return loadFonts().then(function(css){
       var L0=LAYOUTS[o.kind]||LAYOUTS.a4, cols=L0.cols, minFs=o.minFs||7, raws=[];
-      o.secsGroups.forEach(function(groupSecs){
-        var blocks=blocksFromSecs(groupSecs);
-        var lo=minFs,hi=17,best=null;
-        for(var it=0;it<10;it++){
-          var mid=(lo+hi)/2;
-          var L={w:L0.w,h:L0.h,m:L0.m,cols:cols,gap:L0.gap,fs:mid.toFixed(2)+'px',h2:(mid*1.18).toFixed(2)+'px'};
-          var P=paginate(blocks,L,null);
-          if(P.boxes.length<=cols){best={L:L,P:P};lo=mid;}else hi=mid;
-        }
-        if(!best){
-          var Lmin={w:L0.w,h:L0.h,m:L0.m,cols:cols,gap:L0.gap,fs:minFs+'px',h2:(minFs*1.18)+'px'};
-          best={L:Lmin,P:paginate(blocks,Lmin,null)};
-        }
-        for(var i=0;i<best.P.boxes.length;i+=best.L.cols) raws.push(pageHTML(best.L,best.P.boxes.slice(i,i+best.L.cols),null,best.P.cw,best.P.ch));
+      var blocksGroups=o.secsGroups.map(blocksFromSecs);
+      function layoutAt(fs){return {w:L0.w,h:L0.h,m:L0.m,cols:cols,gap:L0.gap,fs:fs.toFixed(2)+'px',h2:(fs*1.18).toFixed(2)+'px'};}
+      function allFit(fs){var L=layoutAt(fs);return blocksGroups.every(function(blocks){return paginate(blocks,L,null).boxes.length<=cols;});}
+      var lo=minFs,hi=17,bestFs=minFs;
+      for(var it=0;it<10;it++){var mid=(lo+hi)/2;if(allFit(mid)){bestFs=mid;lo=mid;}else hi=mid;}
+      var L=layoutAt(bestFs);
+      blocksGroups.forEach(function(blocks){
+        var P=paginate(blocks,L,null);
+        for(var i=0;i<P.boxes.length;i+=cols) raws.push(pageHTML(L,P.boxes.slice(i,i+cols),null,P.cw,P.ch));
       });
       return rasterAll(raws,L0,2.0,css,o).then(function(imgs){
         return writePDF(imgs.map(function(im){return {w:A4[0],h:A4[1],imgs:[{img:im,x:0,y:0,w:A4[0],h:A4[1]}]};}));
