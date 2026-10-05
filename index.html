@@ -526,7 +526,34 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
         if(found&&(!best||found.fs>best.fs))best=found;});
       return best||{fs:0};});
   }
-  root.PdfMaker={build:build,buildSheet:buildSheet,fit:fitInfo,fitMulti:fitMulti,zoom:function(){return ZOOM;}};
+  // כל קבוצת secs (לדוגמה: "חלק" אחד) מקבלת עמוד/עמודים משלה, עם גודל
+  // אות שמחושב בנפרד לכל קבוצה (חיפוש בינארי) כך שהיא תיכנס, אם אפשר,
+  // בדיוק לעמוד אחד - קבוצות קצרות יקבלו אות גדולה ונוחה, קבוצות ארוכות
+  // אות קטנה יותר, כל אחת בנפרד על בסיס האורך שלה בפועל.
+  function buildFitted(o){
+    return loadFonts().then(function(css){
+      var L0=LAYOUTS[o.kind]||LAYOUTS.a4, cols=L0.cols, minFs=o.minFs||7, raws=[];
+      o.secsGroups.forEach(function(groupSecs){
+        var blocks=blocksFromSecs(groupSecs);
+        var lo=minFs,hi=17,best=null;
+        for(var it=0;it<10;it++){
+          var mid=(lo+hi)/2;
+          var L={w:L0.w,h:L0.h,m:L0.m,cols:cols,gap:L0.gap,fs:mid.toFixed(2)+'px',h2:(mid*1.18).toFixed(2)+'px'};
+          var P=paginate(blocks,L,null);
+          if(P.boxes.length<=cols){best={L:L,P:P};lo=mid;}else hi=mid;
+        }
+        if(!best){
+          var Lmin={w:L0.w,h:L0.h,m:L0.m,cols:cols,gap:L0.gap,fs:minFs+'px',h2:(minFs*1.18)+'px'};
+          best={L:Lmin,P:paginate(blocks,Lmin,null)};
+        }
+        for(var i=0;i<best.P.boxes.length;i+=best.L.cols) raws.push(pageHTML(best.L,best.P.boxes.slice(i,i+best.L.cols),null,best.P.cw,best.P.ch));
+      });
+      return rasterAll(raws,L0,2.0,css,o).then(function(imgs){
+        return writePDF(imgs.map(function(im){return {w:A4[0],h:A4[1],imgs:[{img:im,x:0,y:0,w:A4[0],h:A4[1]}]};}));
+      });
+    });
+  }
+  root.PdfMaker={build:build,buildSheet:buildSheet,buildFitted:buildFitted,fit:fitInfo,fitMulti:fitMulti,zoom:function(){return ZOOM;}};
 })(window);
 
 (function(){
@@ -711,6 +738,18 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
         var fn='תפילת ערבית - '+NUSNAME[nn]+'.pdf';
         return dl.then(function(d){if(!d)return plainSave(blob,fn).then(function(){stt.textContent='הקובץ הורד. הדפס דו־צדדי על דף אחד.';});
           return d.save({filename:fn,data:blob}).then(function(){stt.textContent='הקובץ נשמר. הדפס דו־צדדי על דף אחד.';},function(e){stt.textContent=e&&e.code==='declined'?'ההורדה בוטלה.':'לא הצלחתי לשמור את הקובץ.';});});})
+      .catch(function(e){console.error(e);stt.textContent='לא הצלחתי להכין את הקובץ.';}).then(function(){busy=false;});
+      return;
+    }
+    if((k==='a4'||k==='a4c2')&&LAST.f==='chanukatHabayit'){
+      var groups=[],cur=[];
+      LAST.secs.forEach(function(sec){if(sec.brk&&cur.length){groups.push(cur);cur=[];}cur.push(sec);});
+      if(cur.length)groups.push(cur);
+      PdfMaker.buildFitted({secsGroups:groups,kind:k,onProgress:function(i,n){stt.textContent='מכין עמוד '+(i+1)+' מתוך '+n+'…';}})
+      .then(function(blob){window.__lastPdf=blob;stt.textContent='הקובץ מוכן ('+(blob.size/1048576).toFixed(1)+' MB). כל חלק מותאם לעמוד שלו.';
+        return dl.then(function(d){if(!d){return plainSave(blob,LAST.title.replace(/[\\\\/:*?"<>|]/g,'')+' '+NAMES[k]+'.pdf').then(function(){stt.textContent='הקובץ הורד.';});}
+          var fn=LAST.title.replace(/[\\/:*?"<>|]/g,'')+' '+NAMES[k]+'.pdf';
+          return d.save({filename:fn,data:blob}).then(function(){stt.textContent='הקובץ נשמר.';},function(e){stt.textContent=e&&e.code==='declined'?'ההורדה בוטלה.':'לא הצלחתי לשמור את הקובץ.';});});})
       .catch(function(e){console.error(e);stt.textContent='לא הצלחתי להכין את הקובץ.';}).then(function(){busy=false;});
       return;
     }
