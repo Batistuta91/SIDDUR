@@ -28,6 +28,11 @@ The site does **not** compute the Hebrew calendar or halachic rules. `data/days.
 - `data/texts.json`: map of template name → raw text in Tfilon's line format (names like `s_shacharit`, `specials/a_mincha`, `tikun_chatzot`).
 - `data/motzash.json`, `data/chanukatHabayit.json`: standalone texts keyed by nusach, loaded lazily and not run through the resolver.
 - `data/z/<cityIndex>.txt`: one line per day (same index as `days.json`). The first 13 zmanim are 3-hex-digit minute values (`---` = none) in the order of `ZL.core`. These are followed by optional 4-char entries: a letter (`A`+index into `ZL.extra`) plus 3 hex digits. Times are stored in the city's standard-time offset (`CITIES[i][2]`). `zmanim()` corrects them for DST using `Intl` and the IANA zone (`CITIES[i][3]`).
+- `data/sm/` (שניים מקרא ואחד תרגום, from the "שניים מקרא ואחד תרגום" Android app v1.13.4; regenerate with `python tools/sm_convert.py <app flutter_assets/assets dir> data/sm`). Loaded lazily only when the feature opens.
+  - `cal.json`: `{names, haft, il, ch}`. `names` is the parashot in Torah order (joined parashot follow their second part); file indexes everywhere are indexes into it, so never reorder it. `il`/`ch` are `[shabbatDaysSince1970, nameIndex]` rows, 2021–2121. In the source data the haftara always matches the parasha name.
+  - `p/<i>.json`: `[aliya][pasuk] = [perek, pasuk, textWithTeamim, targum, [[dibur, perush]…], isMaftir]`. `isMaftir` in the last aliya starts מפטיר; in an earlier aliya of a joined parasha it marks where the second parasha starts. וזאת הברכה has 6 aliyot.
+  - `h/<i>.json`: `[[book, [[perek, [[pasuk, text, msgBefore, msgAfter]…]]…]]…]`.
+  - Text quirk: U+05EF in the source marks a vocal sheva (the app's own font draws it); `smTxt()` shows it as U+05B0.
 - `CITIES` (inline in `index.html`): `[name, isIsrael, stdOffsetHours, ianaZone]`. The array index is the file name in `data/z/`, so never reorder it.
 
 ### Scripts in `index.html`
@@ -41,6 +46,8 @@ The site does **not** compute the Hebrew calendar or halachic rules. `data/days.
 3. **App IIFE**: state, navigation and rendering.
    - `current()` picks the day index, and switches to the *next* day after local sunset ("אור ל…") unless a manual date is set.
    - `menuItems()` builds the per-nusach prayer list, partly driven by day bits (`MUSAF`, `OMER`, `CHANUKA`).
+   - `openSM()` / `smShow()` / `smSecs()` handle שניים מקרא ואחד תרגום. The week's parasha is the first calendar Shabbat on or after `current().idx`, so it advances after sunset on Shabbat. `smSecs()` builds the same `secs` structure as `toHTML()` (each pasuk twice as `text`, the Targum as `ins`, optional Rashi as `note`, sections per aliya plus מפטיר and הפטרה). That is why the jump menu and every PDF layout work unchanged. `#smBar` (parasha picker, Rashi and teamim toggles, saved as `sid-smRashi` / `sid-smTeamim`) is hidden by `show()` and re-shown only by `openSM()`.
+   - `secsHTML(secs, vn)` renders sections for the screen. `vn` styles a leading `(N) ` as a verse number; PDF lines stay plain text, since `PdfMaker` splits on spaces and markup with attributes would break.
    - `toHTML()` turns resolved lines into sections and paragraphs using the text markup:
      - `=====title` starts a section with a page break; `-----title` starts a section.
      - `(: … :)` is a note, `([ … ])` is an insertion, `(=== … ===)` and `(--- … ---)` are variants.

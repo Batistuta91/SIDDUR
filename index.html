@@ -64,6 +64,9 @@ table.z tr.hl td{color:var(--hl)}
 #text p.ins{color:var(--insert)}
 .loading{padding:60px 0;text-align:center;color:var(--muted);font-size:1.2rem}
 .about p{line-height:1.7;margin:0 0 10px}
+#text .vn{font:600 .62em var(--f-ui);color:var(--muted);vertical-align:.3em;margin-inline-end:2px}
+#smBar{flex-basis:100%;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+#smBar label{display:flex;gap:5px;align-items:center;font-size:1rem;cursor:pointer}
 </style>
 
 <div class="bar">
@@ -98,6 +101,7 @@ table.z tr.hl td{color:var(--hl)}
   <div class="panel about">
     <h2>אודות</h2>
     <p>התפילות, ההנחיות והלוגיקה שקובעת מה אומרים בכל יום לקוחים מהאפליקציה „תפילון+” (גרסה 0.2.21) של אורי הולנדר, המופצת בחינם.</p>
+    <p>הטקסטים של שניים מקרא ואחד תרגום (מקרא בטעמים, תרגום אונקלוס, רש״י וההפטרות) ולוח הפרשות לקוחים מהאפליקציה „שניים מקרא ואחד תרגום” (גרסה 1.13.4).</p>
     <p>האתר מתעדכן לבד לפי התאריך, השעה והמיקום שנבחר. אחרי השקיעה הוא עובר ליום הבא, כמו האפליקציה. הנתונים מכסים את השנים 2026–2036.</p>
     <p>זמני היום מחושבים כמו באפליקציה ומותאמים אוטומטית לשעון קיץ וחורף. אין להשתמש בהם הלכה למעשה, ויש לקחת בחשבון סטייה של כמה דקות.</p>
   </div>
@@ -109,6 +113,12 @@ table.z tr.hl td{color:var(--hl)}
     <button class="tbtn" id="rDown" type="button" aria-label="הקטנת כתב">א−</button>
     <button class="tbtn" id="rUp" type="button" aria-label="הגדלת כתב">א+</button>
     <button class="tbtn" id="pdfBtn" type="button">PDF ⬇</button>
+    <div id="smBar" hidden>
+      <label for="smSel" style="position:absolute;width:1px;height:1px;overflow:hidden">בחירת פרשה</label>
+      <select id="smSel"></select>
+      <label><input type="checkbox" id="smRashi"> רש״י</label>
+      <label><input type="checkbox" id="smTeamim"> טעמים</label>
+    </div>
     <div class="ctx" id="rctx"></div>
   </div>
   <div id="text"></div>
@@ -593,7 +603,7 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
   // ---- navigation ----
   var VIEWS=['vMain','vNus','vList','vZ','vSet','vAbout','vRead'];
   function show(v,title,push){
-    VIEWS.forEach(function(id){$(id).hidden=id!==v;});
+    VIEWS.forEach(function(id){$(id).hidden=id!==v;});$('smBar').hidden=true;
     $('title').textContent=title; $('back').hidden=v==='vMain'; $('ticker').hidden=v==='vRead';
     if(push){stack.push([v,title]);try{history.pushState({d:stack.length},'');}catch(e){}}
     window.scrollTo(0,0);
@@ -613,9 +623,10 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
   }
   function renderMain(){
     ticker();
-    $('vMain').innerHTML=btn('לבחירת נוסח')+btn('תפילה לעת צרה ומלחמה')+btn('הגדרות')+btn('זמני היום')+btn('עזרה')+btn('אודות');
+    $('vMain').innerHTML=btn('לבחירת נוסח')+btn('שניים מקרא ואחד תרגום')+btn('תפילה לעת צרה ומלחמה')+btn('הגדרות')+btn('זמני היום')+btn('עזרה')+btn('אודות');
     bind('vMain',[
       function(){renderNus();show('vNus','לבחירת נוסח',true);},
+      function(){openSM();},
       function(){openPrayer('tzahal','תפילה לעת צרה ומלחמה');},
       function(){syncSet();show('vSet','הגדרות',true);},
       function(){renderZ();show('vZ','זמני היום',true);},
@@ -680,13 +691,78 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
       }
     });
     if(mode)flush(buf,mode);flush(text,'text');
+    var r=secsHTML(secs);
+    return {html:r.html,opts:r.opts,secs:secs.filter(function(s){return s.items.length;})};
+  }
+  // secs -> screen HTML. vn: style a leading "(N) " in text paragraphs as a verse number (screen only; the PDF keeps plain text).
+  function secsHTML(secs,vn){
     var html=[],opts=[],n=0;
     secs.forEach(function(sec){if(!sec.items.length)return;var id='sec'+(n++);
       html.push('<section id="'+id+'">'+(sec.t?'<h2>'+esc(sec.t)+'</h2>':''));if(sec.t)opts.push('<option value="'+id+'">'+esc(sec.t)+'</option>');
-      sec.items.forEach(function(it){var k=it[0],inner=it[1].join('<br>');html.push(k==='text'?'<p class="t">'+inner+'</p>':k==='note'?'<p class="n">'+inner+'</p>':'<p class="t ins">'+inner+'</p>');});
+      sec.items.forEach(function(it){var k=it[0],inner=it[1].join('<br>');if(vn&&k==='text')inner=inner.replace(/^\(([^)]{1,9})\) /,'<span class="vn">$1</span> ');html.push(k==='text'?'<p class="t">'+inner+'</p>':k==='note'?'<p class="n">'+inner+'</p>':'<p class="t ins">'+inner+'</p>');});
       html.push('</section>');});
-    return {html:html.join(''),opts:opts.join(''),secs:secs.filter(function(s){return s.items.length;})};
+    return {html:html.join(''),opts:opts.join('')};
   }
+
+  // ---- שניים מקרא ואחד תרגום (texts and weekly calendar from the "שניים מקרא ואחד תרגום" app v1.13.4; data/sm) ----
+  // cal.json: {names:[parasha names, Torah order], haft:[indexes that have a haftara file], il/ch:[[shabbatDaysSinceEpoch, nameIndex]...]}
+  // p/<i>.json: [aliya][pasuk] = [perek, pasuk, textWithTeamim, targum, [[dibur, perush]...], isMaftir]
+  // h/<i>.json: [[book, [[perek, [[pasuk, text, msgBefore, msgAfter]...]]...]]...]
+  var SM={cal:null,p:{},h:{},i:0,auto:-1,shab:''},smO={rashi:lsGet('sid-smRashi')==='1',teamim:lsGet('sid-smTeamim')!=='0'};
+  var ALIYA=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שביעי'];
+  function smGet(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(u);return r.json();});}
+  function smParts(i){var N=SM.cal.names,p=N[i].split('-');return p.length===2&&N.indexOf(p[0])>=0&&N.indexOf(p[1])>=0?p:null;}
+  function smName(i){var p=smParts(i);return p?p.join('–'):SM.cal.names[i].replace(/-/g,' ');}
+  // U+05EF marks a vocal sheva in the source (drawn by its custom font); show it as a plain sheva.
+  function smTxt(s){s=s.replace(/ׯ/g,'ְ');if(!smO.teamim)s=s.replace(/\s׀/g,'').replace(/[֑-ֽ֯]/g,'');return esc(s.replace(/\s+/g,' ').trim());}
+  // The week's parasha is the first Shabbat on or after the current halachic day, so after sunset on Shabbat it moves on.
+  function smWeek(){var y=ymdOf(current().idx),d=Math.round(Date.UTC(y.y,y.m-1,y.d)/864e5),R=SM.cal[CITIES[st.city][1]?'il':'ch'];
+    for(var k=0;k<R.length;k++)if(R[k][0]>=d)return {i:R[k][1],d:R[k][0]};return null;}
+  function smSecs(i,P,H){
+    var secs=[],sec=null,per=null,parts=smParts(i);
+    function ns(t,brk){sec={t:t,items:[],brk:!!brk};secs.push(sec);}
+    P.forEach(function(al,a){ns(ALIYA[a]||String(a+1));
+      al.forEach(function(q){
+        if(q[5]){if(a===P.length-1){if(sec.t!=='מפטיר')ns('מפטיר');}else if(parts)sec.items.push(['note',[esc('כאן מתחילה פרשת '+parts[1])]]);}
+        if(q[0]!==per){per=q[0];sec.items.push(['note',[esc('פרק '+q[0])]]);}
+        var m=smTxt(q[2]);sec.items.push(['text',['('+esc(q[1])+') '+m]],['text',[m]]);
+        if(q[3])sec.items.push(['ins',[smTxt(q[3])]]);
+        if(smO.rashi&&q[4].length)sec.items.push(['note',q[4].map(function(r){return esc((r[0]?r[0]+' – ':'')+r[1]);})]);
+      });});
+    if(H){ns('הפטרה',true);
+      H.forEach(function(b){b[1].forEach(function(pr){sec.items.push(['note',[esc(b[0]+' פרק '+pr[0])]]);
+        pr[1].forEach(function(q){if(q[2])sec.items.push(['note',[esc(q[2])]]);sec.items.push(['text',['('+esc(q[0])+') '+smTxt(q[1])]]);if(q[3])sec.items.push(['note',[esc(q[3])]]);});});});}
+    return secs;
+  }
+  function smLoad(i){return Promise.all([SM.p[i]||smGet('data/sm/p/'+i+'.json').then(function(j){return SM.p[i]=j;}),
+    SM.cal.haft.indexOf(i)<0?null:(SM.h[i]||smGet('data/sm/h/'+i+'.json').then(function(j){return SM.h[i]=j;}))]);}
+  function smShow(i,top){
+    SM.i=i;$('smSel').value=String(i);
+    var anchor=null;if(!top)[].some.call($('text').querySelectorAll('section'),function(s){if(s.getBoundingClientRect().bottom>150){anchor=s.id;return true;}});
+    return smLoad(i).then(function(a){
+      var secs=smSecs(i,a[0],a[1]),r=secsHTML(secs,true),nm=smName(i);
+      LAST={f:'sm',secs:secs,title:'פרשת '+nm,nus:'שניים מקרא ואחד תרגום',day:i===SM.auto?SM.shab:''};
+      $('text').innerHTML=r.html;$('jump').innerHTML=r.opts;
+      $('rctx').textContent='פרשת '+nm+(i===SM.auto&&SM.shab?' · '+SM.shab:'')+' · כל פסוק פעמיים ואחריו התרגום';
+      if(anchor&&$(anchor))$(anchor).scrollIntoView();else window.scrollTo(0,0);
+    }).catch(function(e){console.error(e);$('rctx').textContent='לא הצלחתי לטעון את הפרשה.';});
+  }
+  function openSM(){
+    show('vRead','שניים מקרא ואחד תרגום',true);$('smBar').hidden=false;
+    $('text').innerHTML='<div class="loading">טוען…</div>';$('jump').innerHTML='';$('rctx').textContent='';
+    $('smRashi').checked=smO.rashi;$('smTeamim').checked=smO.teamim;
+    (SM.cal?Promise.resolve():smGet('data/sm/cal.json').then(function(j){SM.cal=j;
+      $('smSel').innerHTML=j.names.map(function(n,k){return '<option value="'+k+'">'+esc('פרשת '+smName(k))+'</option>';}).join('');}))
+    .then(function(){
+      var w=smWeek();SM.auto=w?w.i:0;SM.shab='';
+      if(w){var t=new Date(w.d*864e5),dd=DAYS?dayData(idxOf(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate())):null;
+        SM.shab='לשבת '+(dd&&dd.info[0]?dd.info[0]:t.toLocaleDateString('he-IL',{day:'numeric',month:'long',timeZone:'UTC'}));}
+      return smShow(SM.auto,true);})
+    .catch(function(e){console.error(e);$('rctx').textContent='לא הצלחתי לטעון את הפרשה.';});
+  }
+  $('smSel').onchange=function(){smShow(+$('smSel').value,true);};
+  $('smRashi').onchange=function(){smO.rashi=$('smRashi').checked;lsSet('sid-smRashi',smO.rashi?'1':'0');smShow(SM.i,false);};
+  $('smTeamim').onchange=function(){smO.teamim=$('smTeamim').checked;lsSet('sid-smTeamim',smO.teamim?'1':'0');smShow(SM.i,false);};
   var MOTZ=null;
   function openMotzash(n,label){
     (MOTZ?Promise.resolve(MOTZ):fetch('data/motzash.json').then(function(r){return r.json();}).then(function(j){MOTZ=j;return j;})).then(function(M){
