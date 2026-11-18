@@ -708,7 +708,7 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
   // cal.json: {names:[parasha names, Torah order], haft:[indexes that have a haftara file], il/ch:[[shabbatDaysSinceEpoch, nameIndex]...]}
   // p/<i>.json: [aliya][pasuk] = [perek, pasuk, textWithTeamim, targum, [[dibur, perush]...], isMaftir]
   // h/<i>.json: [[book, [[perek, [[pasuk, text, msgBefore, msgAfter]...]]...]]...]
-  var SM={cal:null,p:{},h:{},i:0,auto:-1,shab:''},smO={rashi:lsGet('sid-smRashi')==='1',teamim:lsGet('sid-smTeamim')!=='0'};
+  var SM={cal:null,p:{},h:{},i:0,auto:-1,wd:-1,shown:-1,shab:''},smO={rashi:lsGet('sid-smRashi')==='1',teamim:lsGet('sid-smTeamim')!=='0'};
   var ALIYA=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שביעי'];
   function smGet(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(u);return r.json();});}
   function smParts(i){var N=SM.cal.names,p=N[i].split('-');return p.length===2&&N.indexOf(p[0])>=0&&N.indexOf(p[1])>=0?p:null;}
@@ -736,25 +736,35 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
   }
   function smLoad(i){return Promise.all([SM.p[i]||smGet('data/sm/p/'+i+'.json').then(function(j){return SM.p[i]=j;}),
     SM.cal.haft.indexOf(i)<0?null:(SM.h[i]||smGet('data/sm/h/'+i+'.json').then(function(j){return SM.h[i]=j;}))]);}
+  // Reading position is kept as the index of the first visible numbered pasuk, which Rashi/teamim toggles don't change.
+  function smVerses(){return [].map.call($('text').querySelectorAll('p.t .vn'),function(s){return s.parentNode;});}
+  function smTop(){return $('vRead').querySelector('.tools').getBoundingClientRect().bottom;}
+  function smVerseAt(){var v=smVerses(),t=smTop();for(var k=0;k<v.length;k++)if(v[k].getBoundingClientRect().bottom>t)return k;return -1;}
+  function smGoVerse(k){var v=smVerses();if(k>0&&v[k])window.scrollBy(0,v[k].getBoundingClientRect().top-smTop()-8);else window.scrollTo(0,0);}
+  // Saved place in this week's parasha: {d: Shabbat day, i: parasha, v: pasuk index}. A new week starts again from ראשון.
+  function smPosGet(){try{var p=JSON.parse(lsGet('sid-smPos')||'null');return p&&p.d===SM.wd&&p.i===SM.auto?p.v:0;}catch(e){return 0;}}
+  var smTimer=0;
+  window.addEventListener('scroll',function(){if($('smBar').hidden||SM.wd<0||SM.shown!==SM.auto)return;clearTimeout(smTimer);
+    smTimer=setTimeout(function(){if($('smBar').hidden||SM.shown!==SM.auto)return;var k=smVerseAt();if(k>=0)lsSet('sid-smPos',JSON.stringify({d:SM.wd,i:SM.auto,v:k}));},400);},{passive:true});
   function smShow(i,top){
     SM.i=i;$('smSel').value=String(i);
-    var anchor=null;if(!top)[].some.call($('text').querySelectorAll('section'),function(s){if(s.getBoundingClientRect().bottom>150){anchor=s.id;return true;}});
+    var at=top?(i===SM.auto?smPosGet():0):smVerseAt();SM.shown=-1;
     return smLoad(i).then(function(a){
       var secs=smSecs(i,a[0],a[1]),r=secsHTML(secs,true),nm=smName(i);
       LAST={f:'sm',secs:secs,title:'פרשת '+nm,nus:'שניים מקרא ואחד תרגום',day:i===SM.auto?SM.shab:''};
       $('text').innerHTML=r.html;$('jump').innerHTML=r.opts;
       $('rctx').textContent='פרשת '+nm+(i===SM.auto&&SM.shab?' · '+SM.shab:'')+' · כל פסוק פעמיים ואחריו התרגום';
-      if(anchor&&$(anchor))$(anchor).scrollIntoView();else window.scrollTo(0,0);
+      SM.shown=i;smGoVerse(at);
     }).catch(function(e){console.error(e);$('rctx').textContent='לא הצלחתי לטעון את הפרשה.';});
   }
   function openSM(){
-    show('vRead','שניים מקרא ואחד תרגום',true);$('smBar').hidden=false;
+    SM.shown=-1;show('vRead','שניים מקרא ואחד תרגום',true);$('smBar').hidden=false;
     $('text').innerHTML='<div class="loading">טוען…</div>';$('jump').innerHTML='';$('rctx').textContent='';
     $('smRashi').checked=smO.rashi;$('smTeamim').checked=smO.teamim;
     (SM.cal?Promise.resolve():smGet('data/sm/cal.json').then(function(j){SM.cal=j;
       $('smSel').innerHTML=j.names.map(function(n,k){return '<option value="'+k+'">'+esc('פרשת '+smName(k))+'</option>';}).join('');}))
     .then(function(){
-      var w=smWeek();SM.auto=w?w.i:0;SM.shab='';
+      var w=smWeek();SM.auto=w?w.i:0;SM.wd=w?w.d:-1;SM.shab='';
       if(w){var t=new Date(w.d*864e5),dd=DAYS?dayData(idxOf(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate())):null;
         SM.shab='לשבת '+(dd&&dd.info[0]?dd.info[0]:t.toLocaleDateString('he-IL',{day:'numeric',month:'long',timeZone:'UTC'}));}
       return smShow(SM.auto,true);})
