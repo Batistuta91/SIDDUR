@@ -603,7 +603,7 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
   // ---- navigation ----
   var VIEWS=['vMain','vNus','vList','vZ','vSet','vAbout','vRead'];
   function show(v,title,push){
-    VIEWS.forEach(function(id){$(id).hidden=id!==v;});$('smBar').hidden=true;
+    if(!$('smBar').hidden)smPosSave();VIEWS.forEach(function(id){$(id).hidden=id!==v;});$('smBar').hidden=true;
     $('title').textContent=title; $('back').hidden=v==='vMain'; $('ticker').hidden=v==='vRead';
     if(push){stack.push([v,title]);try{history.pushState({d:stack.length},'');}catch(e){}}
     window.scrollTo(0,0);
@@ -611,6 +611,8 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
   function goBack(){ if(stack.length>1){stack.pop();var t=stack[stack.length-1];if(t[0]==='vList')renderList(listNus);if(t[0]==='vMain')renderMain();show(t[0],t[1],false);} }
   $('back').onclick=function(){try{history.back();}catch(e){goBack();}};
   window.addEventListener('popstate',function(){goBack();});
+  // show() sets the scroll itself; browser restoration on Back would move the page before smPosSave() reads it.
+  try{history.scrollRestoration='manual';}catch(e){}
 
   function btn(label,cls){return '<button type="button" class="mbtn'+(cls?' '+cls:'')+'">'+esc(label)+'</button>';}
   function bind(container,handlers){[].forEach.call($(container).querySelectorAll('.mbtn'),function(b,k){b.onclick=handlers[k];});}
@@ -744,8 +746,9 @@ var ZL={"core": ["עלות השחר", "משיכיר", "הנץ החמה", "סזק
   // Saved place in this week's parasha: {d: Shabbat day, i: parasha, v: pasuk index}. A new week starts again from ראשון.
   function smPosGet(){try{var p=JSON.parse(lsGet('sid-smPos')||'null');return p&&p.d===SM.wd&&p.i===SM.auto?p.v:0;}catch(e){return 0;}}
   var smTimer=0;
-  window.addEventListener('scroll',function(){if($('smBar').hidden||SM.wd<0||SM.shown!==SM.auto)return;clearTimeout(smTimer);
-    smTimer=setTimeout(function(){if($('smBar').hidden||SM.shown!==SM.auto)return;var k=smVerseAt();if(k>=0)lsSet('sid-smPos',JSON.stringify({d:SM.wd,i:SM.auto,v:k}));},400);},{passive:true});
+  function smPosSave(){clearTimeout(smTimer);if($('smBar').hidden||SM.wd<0||SM.shown!==SM.auto)return;var k=smVerseAt();if(k>=0)lsSet('sid-smPos',JSON.stringify({d:SM.wd,i:SM.auto,v:k}));}
+  window.addEventListener('scroll',function(){if($('smBar').hidden||SM.wd<0||SM.shown!==SM.auto)return;clearTimeout(smTimer);smTimer=setTimeout(smPosSave,300);},{passive:true});
+  window.addEventListener('pagehide',smPosSave);document.addEventListener('visibilitychange',function(){if(document.hidden)smPosSave();});
   function smShow(i,top){
     SM.i=i;$('smSel').value=String(i);
     var at=top?(i===SM.auto?smPosGet():0):smVerseAt();SM.shown=-1;
